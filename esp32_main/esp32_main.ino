@@ -3,14 +3,19 @@
 
 #define MOTOR_ID 64
 #define DRIVER_ID 0
+#define PIN_CANRX 32
+#define PIN_CANTX 33
 
-bool isInMotorControlMode = false;
+bool motorPowerCommand = false;
+bool motorControlCommand = false;
+float torqueCommand = 0.0;
+float speedCommand = 0.0;
 
 void setup() {
   Serial.begin(9600);
   while (!Serial);
   
-  CAN.setPins(32,33);
+  CAN.setPins(PIN_CANRX, PIN_CANTX);
   if (!CAN.begin(1000E3)) {
     Serial.println("Starting CAN failed!");
     while (1);
