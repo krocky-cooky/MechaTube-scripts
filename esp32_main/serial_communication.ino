@@ -1,11 +1,12 @@
 /// @file 
 /// @brief シリアル通信の送受信と、文字列<->変数間のデコードを行う関数群
-/// シリアル通信をBluetooth経由に変更したい場合は、"Serial"を"SerialBT"に置換してください。
+/// シリアル通信をBluetooth経由に変更したい場合は、#define SERIAL_USE_BLUETOOTH のコメントアウトを解除してください
 /// @author thgcMtdh
 /// @date 2021/10/4
 
 #include <Arduino.h>
 
+// #define SERIAL_USE_BLUETOOTH
 #define SERIAL_BUFSIZE 20
 
 extern bool motorPowerCommand;
@@ -36,7 +37,7 @@ int serial_decodeIncomingCommand() {
     }
   }
 
-  /*
+  #ifdef SERIAL_USE_BLUETOOTH
   if (!retval) {  // if there is no data available on HardwareSerial, try to read data from Bluetooth Serial
 
     while (SerialBT.available()) {
@@ -51,7 +52,7 @@ int serial_decodeIncomingCommand() {
       }
     }
   }
-  */
+  #endif
 
   return retval;
 }
