@@ -20,10 +20,11 @@ extern float speedCommand;
 int serial_decodeIncomingCommand() {
   static char buf[SERIAL_BUFSIZE] = "";
   static int i = 0;
+  static char bufBT[SERIAL_BUFSIZE] = "";
+  static int iBT = 0;
   int retval = 0;
 
   while (Serial.available()) {
-
     char c = Serial.read();          // read a received character
     if (c == '(') i = 0;             // if the character is '(' which indicates the beginnig of the message, move index to zero
     buf[i] = c;                      // add the character to the buffer
@@ -34,6 +35,23 @@ int serial_decodeIncomingCommand() {
       if (decodeCommand(buf) > 0) retval = 1;
     }
   }
+
+  /*
+  if (!retval) {  // if there is no data available on HardwareSerial, try to read data from Bluetooth Serial
+
+    while (SerialBT.available()) {
+      char c = SerialBT.read();            // read a received character
+      if (c == '(') i = 0;                 // if the character is '(' which indicates the beginnig of the message, move index to zero
+      bufBT[i] = c;                        // add the character to the buffer
+      iBT++;                               // move the index to the next address
+      if (iBT >= SERIAL_BUFSIZE) iBT = 0;  // if the index exceeds the length of buffer, reset the index to zero
+
+      if (c == ')') {                     // if a command transmission has finished, try to decode it
+        if (decodeCommand(bufBT) > 0) retval = 1;
+      }
+    }
+  }
+  */
 
   return retval;
 }
