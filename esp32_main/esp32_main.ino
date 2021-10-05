@@ -9,9 +9,9 @@
 #define KD 1.0
 
 // 特殊なCANコマンド
-const uint8_t msgEnter[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc};
-const uint8_t msgExit[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfd};
-const uint8_t msgSetPosToZero[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe};
+uint8_t msgEnter[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc};
+uint8_t msgExit[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfd};
+uint8_t msgSetPosToZero[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe};
 
 // ユーザの手元にあるスイッチなど、トルク出力をON/OFFする指令
 bool handSwitch = false;
@@ -59,20 +59,22 @@ void loop() {
   // 開始時刻の記録
   timePrev = timeNow;
   timeNow = micros();
+  dt = timeNow - timePrev;
 
   // シリアル通信で指令を受け取る
   serial_decodeIncomingCommand();
 
-  // 指令値に応じて、モータに指令を送信する
+  // 指令値に応じて、モータの電源とモータ制御モードを変更する
   setMotorPower(motorPowerCommand);
   setMotorControl(motorControlCommand);
   
-  if (handSwitch) {
-    torqueSending = firstOrderDelay_torque(torqueCommand);
-    speedSending = firstOrderDelay_speed(speedCommand);
+  // 手元スイッチONかつモータ制御モードにあるときのみ、トルクを指令値まで徐々に上昇させる
+  if (handSwitch && motorControlSending) {
+    torqueSending = firstOrderDelay_torque(torqueCommand, (float)dt/1e6);
+    speedSending = firstOrderDelay_speed(speedCommand, (float)dt/1e6);
   } else {
-    torqueSending = firstOrderDelay_torque(0.0);
-    speedSending = firstOrderDelay_speed(0.0);
+    torqueSending = firstOrderDelay_torque(0.0, (float)dt/1e6);
+    speedSending = firstOrderDelay_speed(0.0, (float)dt/1e6);
   }
 
   if (fabsf(speedSending) < 0.01) {  // 速度指令が0のとき、トルク指令と判断
