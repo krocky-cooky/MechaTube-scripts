@@ -28,6 +28,11 @@ bool motorControlSending = false;
 float torqueSending = 0.0;
 float speedSending = 0.0;
 
+// (待ち時間等の処理に使う)時刻の記録
+unsigned long timePowerOn = 0;    // モータの電源を入れた時刻 [ms]
+unsigned long timeControlOn = 0;  // モータ制御モードに入った時刻 [ms]
+
+
 void setup() {
   Serial.begin(9600);
   while (!Serial)
@@ -52,9 +57,9 @@ void loop() {
   serial_decodeIncomingCommand();
 
   // 指令値に応じて、モータに指令を送信する
-    setMotorPower(true);
-    setMotorControl(true);
-
+  setMotorPower(motorPowerCommand);
+  setMotorControl(motorControlCommand);
+  
   if (handSwitch) {
     torqueSending = firstOrderDelay(torqueCommand);
     speedSending = firstOrderDelay(speedCommand);
@@ -88,20 +93,45 @@ void loop() {
 
 void setMotorPower(bool command) {
   if (command == 1 && motorPowerSending == 0) {
-    Serial.println("[setMotorPower] motor power: ON");
-    digitalWrite(PIN_MOTORPOWER, HIGH);
-    motorPowerSending = true;
+    if (digitalRead(PIN_MOTORPOWER) == LOW) {
+      digitalWrite(PIN_MOTORPOWER, HIGH);
+      timePowerOn = millis();
+    }
+    if (millis() - timePowerOn > 2000) {
+      motorPowerSending = 1;
+      Serial.println("[setMotorPower] motor power: ON");
+    }
+  }
+
+  if (command == 0 && motorPowerSending == 1 && motorControlSending == 1) {
+    setMotorControl(0);
+  }
+
+  if (command == 0 && motorPowerSending == 1 && motorControlSending == 0) {
+    digitalWrite(PIN_MOTORPOWER, LOW);
+    motorPowerSending = 0;
+    Serial.println("[setMotorPower] motor power: OFF");
   }
 }
 
 void setMotorControl(bool command) {
-  if (command == 1 && motorControlSending == 0) {
-    if (!motorPowerSending) {
-      setMotorPower(true);
-      delay(3000);
-    }
-    Serial.println("[setMotorControl] motor control mode: ON");
+  if (command == 1 && motorPowerSending == 0) {
+    setMotorPower(1);
+  }
+
+  if (command == 1 && motorPowerSending == 1 && motorControlSending == 0) {
     can_send(msgEnter, sizeof(msgEnter));
-    motorControlSending = true;
+    motorControlSending = 1;
+    Serial.println("[setMotorControl] motor control mode: ON");
+  }
+
+  if (command == 0 && motorControlSending == 1) {
+    torqueCommand = 0.0;
+    speedCommand = 0.0;
+    if (fabsf(torqueCommand) < 0.1 && fabsf(speedCommand) < 0.1) {
+      can_send(msgExit, sizeof(msgExit));
+      motorControlSending = 0;
+      Serial.println("[setMotorControl] motor control mode: OFF");
+    }
   }
 }
