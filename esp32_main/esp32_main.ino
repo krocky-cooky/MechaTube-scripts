@@ -38,7 +38,6 @@ void setup() {
   Serial.begin(9600);
   while (!Serial) delay(1);
 
-  /*
   CAN.setPins(PIN_CANRX, PIN_CANTX);
   if (!CAN.begin(1000E3)) {
     Serial.println("Starting CAN failed!");
@@ -49,7 +48,7 @@ void setup() {
   // reference: https://github.com/sandeepmistry/arduino-CAN/issues/62
   volatile uint32_t* pREG_IER = (volatile uint32_t*)0x3ff6b010;
   *pREG_IER &= ~(uint8_t)0x10;
-  */
+  
   Serial.println("[setup] setup comleted");
 }
 
