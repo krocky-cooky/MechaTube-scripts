@@ -21,16 +21,42 @@
 #define Kd_MIN 0
 #define Kd_MAX 5
 
+// 特殊なCANコマンド
+uint8_t msgEnter[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc};  // Enter motor control mode
+uint8_t msgExit[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfd};   // Exit motor control mode
+uint8_t msgSetPosToZero[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe};  // set the current position of the motor to zero
 
-/// @brief CAN送信を行う
-/// @param[in] data 送りたいデータ配列
-/// @param[in] length 送信するバイト数(上限は8byte)
+
+/// @brief トルクや速度指令値をCANで送信する
+/// @param[in] p_des 位置指令値 [rad] (位置を指令しない場合は0を指定)
+/// @param[in] v_des 速度指令値 [rad/s] (速度を指令しない場合は0を指定)
+/// @param[in] kp 位置のフィードバックゲイン[Nm/rad] (位置を指令しない場合は0を指定)
+/// @param[in] kd 速度のフィードバックゲイン[Nm/(rad/s)] (速度を指令しな場合は0を指定)
+/// @param[in] t_ff トルク指令値 [Nm] (トルクを指令しない場合は0を指定)
 /// @return 0:fail, 1:success
-int can_send(uint8_t* data, int length) {
-  if (length < 1 || length > 8) return 0;
+int can_sendCommand(float p_des, float v_des, float kp, float kd, float t_ff) {
+  uint8_t buf[8];
+  can_packCmd(buf, p_des, v_des, kp, kd, t_ff);
 
   if (!CAN.beginPacket(MOTOR_ID)) return 0;
-  if (!CAN.write(data, length)) return 0;
+  if (!CAN.write(buf, sizeof(buf))) return 0;
+  if (!CAN.endPacket()) return 0;
+
+  return 1;
+}
+
+
+/// @brief モータ制御モードのON/OFFを切り替えるコマンドをCANで送信する
+/// @param[in] command 0:Exit motor control mode, 1:Enter motor control mode
+/// @return 0:fail, 1:success
+int can_sendControl(bool command) {
+
+  if (!CAN.beginPacket(MOTOR_ID)) return 0;
+  if (command == 1) {
+    if (!CAN.write(msgEnter, sizeof(msgEnter))) return 0;
+  } else {
+    if (!CAN.write(msgExit, sizeof(msgExit))) return 0;
+  }
   if (!CAN.endPacket()) return 0;
 
   return 1;
@@ -41,10 +67,14 @@ int can_send(uint8_t* data, int length) {
 /// @param[in] packetSize 受信したバイト数(CAN.onReceiveが勝手に渡してくれるので、こちらで渡す必要はない)
 /// @return none
 void can_onReceive(int packetSize) {
+  uint8_t buf[6];
   int id = CAN.packetId();
-  if (id == DRIVER_ID) {
-
+  if (id == DRIVER_ID && packetSize == 6) {
+    for (int i = 0; i < 6; i++) {
+      buf[i] = CAN.read();
+    }
   }
+
 }
 
 

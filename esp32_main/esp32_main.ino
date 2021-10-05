@@ -8,11 +8,6 @@
 #define KP 0.1
 #define KD 1.0
 
-// 特殊なCANコマンド
-uint8_t msgEnter[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc};  // Enter motor control mode
-uint8_t msgExit[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfd};   // Exit motor control mode
-uint8_t msgSetPosToZero[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe};  // set the current position of the motor to zero
-
 // ユーザの手元にあるスイッチなど、トルク出力をON/OFFする指令
 bool handSwitch = false;
 
@@ -80,12 +75,11 @@ void loop() {
   // モータ制御モードに入っていれば、CANを送信する
   if (controlSending) {
     uint8_t msg[8];
-    if (fabsf(speedSending) < 0.01) {  // 速度指令が0のとき、トルク指令と判断
-      can_packCmd(msg, 0.0, 0.0, 0.0, 0.0, torqueSending);
-    } else {                           // 速度指令が0より大きいとき、トルク指令値を無視して速度指令と判断
-      can_packCmd(msg, 0.0, speedSending, 0.0, KD, 0.0);
+    if (fabsf(speedSending) < 0.01) {  // 速度指令が0のとき、トルク指令として送信
+      can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);
+    } else {                           // 速度指令が0より大きいとき、トルク指令値を無視し、速度指令として送信
+      can_sendCommand(0.0, speedSending, 0.0, KD, 0.0);
     }
-    can_send(msg, 8);
   }
   delay(10);
 }
@@ -120,7 +114,7 @@ void setControl(bool command) {
   }
 
   if (command == 1 && powerSending == 1 && controlSending == 0) {
-    can_send(msgEnter, sizeof(msgEnter));
+    can_sendControl(1);
     controlSending = 1;
     Serial.println("[setControl] motor control mode: ON");
   }
@@ -129,7 +123,7 @@ void setControl(bool command) {
     torqueCommand = 0.0;
     speedCommand = 0.0;
     if (fabsf(torqueCommand) < 0.1 && fabsf(speedCommand) < 0.1) {
-      can_send(msgExit, sizeof(msgExit));
+      can_sendControl(0);
       controlSending = 0;
       Serial.println("[setControl] motor control mode: OFF");
     }
