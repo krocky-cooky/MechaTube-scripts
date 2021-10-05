@@ -55,15 +55,6 @@ int serial_getIncomingCommand(bool* pPower, bool* pControl, float* pTorque, floa
 }
 
 
-/// @brief 内部変数をJSON形式の文字列にしてシリアル通信で送る
-/// @param none
-/// @return 0: failure, 1: success
-int serial_sendVariablesJSON() {
-  Serial.println("{\"test\":0.0}");
-  return 1;
-}
-
-
 /// @brief シリアル通信で送られてきた文字列コマンドをデコードし、与えられた変数に指令値を格納する
 /// @param[in] command 解釈する文字列
 /// @param[out] pPower モータ電源の指令値を格納する変数へのポインタ
