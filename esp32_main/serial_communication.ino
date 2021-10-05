@@ -85,14 +85,24 @@ int decodeCommand(const char* command) {
     switch (key) {                             // copy the commanded value
       case 'p':
         motorPowerCommand = (value > 0.5)? true : false;  // float value contains small error so it doesn't exactly eauql to 0 or 1 integer
+        if (!motorPowerCommand && motorControlCommand) {
+          motorControlCommand = false;         // if the power command is false but the control is still on, turns the control OFF
+        }
         break;
       case 'm':
         motorControlCommand = (value > 0.5)? true : false;
+        if (motorControlCommand && !motorPowerCommand) {
+          motorPowerCommand = true;            // if the control command is true but motor power is off, turns the power ON
+        }
         break;
       case 't':
+        motorPowerCommand = true;
+        motorControlCommand = true;
         torqueCommand = value;
         break;
       case 's':
+        motorPowerCommand = true;
+        motorControlCommand = true;
         speedCommand = value;
         break;
       default:
