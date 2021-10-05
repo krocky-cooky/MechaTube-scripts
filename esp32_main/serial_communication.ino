@@ -88,12 +88,16 @@ int decodeCommand(const char* command) {
         if (!motorPowerCommand && motorControlCommand) {
           motorControlCommand = false;         // if the power command is false but the control is still on, turns the control OFF
         }
+        torqueCommand = 0.0;
+        speedCommand = 0.0;
         break;
       case 'm':
         motorControlCommand = (value > 0.5)? true : false;
         if (motorControlCommand && !motorPowerCommand) {
           motorPowerCommand = true;            // if the control command is true but motor power is off, turns the power ON
         }
+        torqueCommand = 0.0;
+        speedCommand = 0.0;
         break;
       case 't':
         motorPowerCommand = true;
