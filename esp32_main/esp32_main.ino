@@ -29,8 +29,11 @@ float torqueSending = 0.0;
 float speedSending = 0.0;
 
 // (待ち時間等の処理に使う)時刻の記録
-unsigned long timePowerOn = 0;    // モータの電源を入れた時刻 [ms]
-unsigned long timeControlOn = 0;  // モータ制御モードに入った時刻 [ms]
+unsigned long timeNow = 0;        // 各loopの開始時刻 [us]
+unsigned long timePrev = 0;       // 直前のloopの開始時刻 [us]
+unsigned long dt = 0;             // 直前のloopからの経過時間 [us]
+unsigned long timePowerOn = 0;    // モータの電源を入れた時刻 [us]
+unsigned long timeControlOn = 0;  // モータ制御モードに入った時刻 [us]
 
 
 void setup() {
@@ -53,6 +56,10 @@ void setup() {
 
 void loop() {
 
+  // 開始時刻の記録
+  timePrev = timeNow;
+  timeNow = micros();
+
   // シリアル通信で指令を受け取る
   serial_decodeIncomingCommand();
 
@@ -61,11 +68,11 @@ void loop() {
   setMotorControl(motorControlCommand);
   
   if (handSwitch) {
-    torqueSending = firstOrderDelay(torqueCommand);
-    speedSending = firstOrderDelay(speedCommand);
+    torqueSending = firstOrderDelay_torque(torqueCommand);
+    speedSending = firstOrderDelay_speed(speedCommand);
   } else {
-    torqueSending = firstOrderDelay(0.0);
-    speedSending = firstOrderDelay(0.0);
+    torqueSending = firstOrderDelay_torque(0.0);
+    speedSending = firstOrderDelay_speed(0.0);
   }
 
   if (fabsf(speedSending) < 0.01) {  // 速度指令が0のとき、トルク指令と判断
@@ -95,9 +102,9 @@ void setMotorPower(bool command) {
   if (command == 1 && motorPowerSending == 0) {
     if (digitalRead(PIN_MOTORPOWER) == LOW) {
       digitalWrite(PIN_MOTORPOWER, HIGH);
-      timePowerOn = millis();
+      timePowerOn = micros();
     }
-    if (millis() - timePowerOn > 2000) {
+    if (timeNow - timePowerOn > 2000000) {
       motorPowerSending = 1;
       Serial.println("[setMotorPower] motor power: ON");
     }
