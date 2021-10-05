@@ -26,21 +26,31 @@ uint8_t msgEnter[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc};  // Ente
 uint8_t msgExit[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfd};   // Exit motor control mode
 uint8_t msgSetPosToZero[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe};  // set the current position of the motor to zero
 
+// 直近にCANで送受信したデータを記憶しておく変数(表示に利用)
+float positionSent, speedSent, kpSent, kdSent, torqueSent;  // 直近のCAN送信データを記録しておく
+float positionReceived, speedReceived, torqueReceived;      // 直近のCAN受信データを記録しておく
+
 
 /// @brief トルクや速度指令値をCANで送信する
-/// @param[in] p_des 位置指令値 [rad] (位置を指令しない場合は0を指定)
-/// @param[in] v_des 速度指令値 [rad/s] (速度を指令しない場合は0を指定)
+/// @param[in] position 位置指令値 [rad] (位置を指令しない場合は0を指定)
+/// @param[in] speed 速度指令値 [rad/s] (速度を指令しない場合は0を指定)
 /// @param[in] kp 位置のフィードバックゲイン[Nm/rad] (位置を指令しない場合は0を指定)
 /// @param[in] kd 速度のフィードバックゲイン[Nm/(rad/s)] (速度を指令しな場合は0を指定)
-/// @param[in] t_ff トルク指令値 [Nm] (トルクを指令しない場合は0を指定)
+/// @param[in] torque トルク指令値 [Nm] (トルクを指令しない場合は0を指定)
 /// @return 0:fail, 1:success
-int can_sendCommand(float p_des, float v_des, float kp, float kd, float t_ff) {
+int can_sendCommand(float position, float speed, float kp, float kd, float torque) {
   uint8_t buf[8];
-  can_packCmd(buf, p_des, v_des, kp, kd, t_ff);
+  packCmd(buf, position, speed, kp, kd, torque);
 
   if (!CAN.beginPacket(MOTOR_ID)) return 0;
   if (!CAN.write(buf, sizeof(buf))) return 0;
   if (!CAN.endPacket()) return 0;
+
+  positionSent = position;
+  speedSent = speed;
+  kpSent = kp;
+  kdSent = kd;
+  torqueSent = torque;
 
   return 1;
 }
@@ -69,16 +79,19 @@ int can_sendControl(bool command) {
 void can_onReceive(int packetSize) {
   uint8_t buf[6];
   int id = CAN.packetId();
+
   if (id == DRIVER_ID && packetSize == 6) {
     for (int i = 0; i < 6; i++) {
       buf[i] = CAN.read();
     }
+    unpackReply(buf, &positionReceived, &speedReceived, &torqueReceived);
+    Serial.printf("{\"torque_ref\":%f, \"speed_ref\":%f, \"position_ref\":%f, ", torqueSent, speedSent, positionSent);
+    Serial.printf("\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueReceived, speedReceived, positionReceived);
   }
-
 }
 
 
-void can_packCmd(uint8_t *data, float p_des, float v_des, float kp, float kd, float t_ff) {
+void packCmd(uint8_t *data, float p_des, float v_des, float kp, float kd, float t_ff) {
   /// limit data to be within bounds ///
   p_des = fminf(fmaxf(P_MIN, p_des), P_MAX);
   v_des = fminf(fmaxf(V_MIN, v_des), V_MAX);
@@ -115,7 +128,7 @@ int float_to_uint(float x, float x_min, float x_max, unsigned int bits) {
   return (int)((x - x_min) * ((float)((1 << bits) - 1) / span));
 }
 
-void can_unpackReply(uint8_t *data, float *position, float *speed, float *torque) {
+void unpackReply(uint8_t *data, float *position, float *speed, float *torque) {
   /// unpack ints from can buffer ///
   int id = data[0];                             //Driver ID number
   int p_int = (data[1] < 8) | data[2];          //Motor position data
