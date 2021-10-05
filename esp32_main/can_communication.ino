@@ -41,16 +41,18 @@ float positionReceived, speedReceived, torqueReceived;      // 直近のCAN受�
 int can_sendCommand(float position, float speed, float kp, float kd, float torque) {
   uint8_t buf[8];
   packCmd(buf, position, speed, kp, kd, torque);
-
+  /*
   if (!CAN.beginPacket(MOTOR_ID)) return 0;
   if (!CAN.write(buf, sizeof(buf))) return 0;
   if (!CAN.endPacket()) return 0;
-
+  */
   positionSent = position;
   speedSent = speed;
   kpSent = kp;
   kdSent = kd;
   torqueSent = torque;
+
+  Serial.printf("{\"torque_ref\":%f, \"speed_ref\":%f, \"position_ref\":%f}\n", torqueSent, speedSent, positionSent);
 
   return 1;
 }
@@ -60,7 +62,7 @@ int can_sendCommand(float position, float speed, float kp, float kd, float torqu
 /// @param[in] command 0:Exit motor control mode, 1:Enter motor control mode
 /// @return 0:fail, 1:success
 int can_sendControl(bool command) {
-
+  /*
   if (!CAN.beginPacket(MOTOR_ID)) return 0;
   if (command == 1) {
     if (!CAN.write(msgEnter, sizeof(msgEnter))) return 0;
@@ -68,6 +70,7 @@ int can_sendControl(bool command) {
     if (!CAN.write(msgExit, sizeof(msgExit))) return 0;
   }
   if (!CAN.endPacket()) return 0;
+  */
 
   return 1;
 }
@@ -85,7 +88,6 @@ void can_onReceive(int packetSize) {
       buf[i] = CAN.read();
     }
     unpackReply(buf, &positionReceived, &speedReceived, &torqueReceived);
-    Serial.printf("{\"torque_ref\":%f, \"speed_ref\":%f, \"position_ref\":%f, ", torqueSent, speedSent, positionSent);
     Serial.printf("\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueReceived, speedReceived, positionReceived);
   }
 }

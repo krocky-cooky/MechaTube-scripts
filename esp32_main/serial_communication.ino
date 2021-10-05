@@ -95,11 +95,13 @@ int decodeCommand(const char* command, bool* pPower, bool* pControl, float* pTor
         *pPower = true;
         *pControl = true;
         *pTorque = value;
+        *pSpeed = 0.0;
         break;
       case 's':
         *pPower = true;
         *pControl = true;
         *pSpeed = value;
+        *pTorque = 0.0;
         break;
       default:
         return 0;

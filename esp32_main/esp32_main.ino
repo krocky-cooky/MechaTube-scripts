@@ -1,12 +1,12 @@
 #include <Arduino.h>
 #include <CAN.h>
-#include <math.h>
 
 #define PIN_CANRX 32
 #define PIN_CANTX 33
 #define PIN_POWER 25
 #define KP 0.1
 #define KD 1.0
+#define TORQUE_CONTROL_MODE 0  // 速度制御したいとき0,トルク制御したいとき1
 
 // ユーザの手元にあるスイッチなど、トルク出力をON/OFFする指令
 bool handSwitch = false;
@@ -32,11 +32,13 @@ unsigned long timeControlOn = 0;  // モータ制御モードに入った時刻 
 
 
 void setup() {
-  Serial.begin(9600);
-  while (!Serial)
-
   pinMode(PIN_POWER, OUTPUT);
+  digitalWrite(PIN_POWER, LOW);
+  
+  Serial.begin(9600);
+  while (!Serial) delay(1);
 
+  /*
   CAN.setPins(PIN_CANRX, PIN_CANTX);
   if (!CAN.begin(1000E3)) {
     Serial.println("Starting CAN failed!");
@@ -47,6 +49,8 @@ void setup() {
   // reference: https://github.com/sandeepmistry/arduino-CAN/issues/62
   volatile uint32_t* pREG_IER = (volatile uint32_t*)0x3ff6b010;
   *pREG_IER &= ~(uint8_t)0x10;
+  */
+  Serial.println("[setup] setup comleted");
 }
 
 void loop() {
@@ -62,26 +66,47 @@ void loop() {
   // 指令値に応じて、モータの電源とモータ制御モードを変更する
   setPower(powerCommand);
   setControl(controlCommand);
+
+  // 手元スイッチのON/OFFを取得する
+  handSwitch = true;
   
-  // 手元スイッチONのときのみ、トルクを指令値まで徐々に上昇させる
-  if (handSwitch) {
-    torqueSending = firstOrderDelay_torque(torqueCommand, (float)dtMicros/1e6);
-    speedSending = firstOrderDelay_speed(speedCommand, (float)dtMicros/1e6);
-  } else {
-    torqueSending = firstOrderDelay_torque(0.0, (float)dtMicros/1e6);
-    speedSending = firstOrderDelay_speed(0.0, (float)dtMicros/1e6);
-  }
-  
-  // モータ制御モードに入っていれば、CANを送信する
+  // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
   if (controlSending) {
-    uint8_t msg[8];
-    if (fabsf(speedSending) < 0.01) {  // 速度指令が0のとき、トルク指令として送信
-      can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);
-    } else {                           // 速度指令が0より大きいとき、トルク指令値を無視し、速度指令として送信
+
+    // トルク指令モードのとき
+    if (TORQUE_CONTROL_MODE) {
+      if (handSwitch) {     // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
+        torqueSending = firstOrderDelay_torque(torqueCommand, (float)dtMicros/1e6);
+      } else {
+        torqueSending = firstOrderDelay_torque(0.0, (float)dtMicros/1e6);
+      }
+      speedSending = 0.0;            // 速度送信値は不要なので0とする
+      firstOrderDelay_resetSpeed();  // 速度の1次遅れ計算用変数をリセット
+
+      can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信
+
+    // 速度指令モードのとき
+    } else {
+      if (handSwitch) {
+        speedSending = firstOrderDelay_speed(speedCommand, (float)dtMicros/1e6);
+      } else {
+        speedSending = firstOrderDelay_speed(0.0, (float)dtMicros/1e6);
+      }
+      torqueSending = 0.0;
+      firstOrderDelay_resetTorque();
+
       can_sendCommand(0.0, speedSending, 0.0, KD, 0.0);
     }
+  
+  // モータ制御モードに入っていないとき、全ての変数を0にリセットしておく
+  } else {
+    torqueSending = 0.0;
+    speedSending = 0.0;
+    firstOrderDelay_resetTorque();
+    firstOrderDelay_resetSpeed();
   }
-  delay(10);
+
+  delay(100);
 }
 
 
@@ -90,21 +115,24 @@ void setPower(bool command) {
     if (digitalRead(PIN_POWER) == LOW) {
       digitalWrite(PIN_POWER, HIGH);
       timePowerOn = micros();
+      Serial.println("[setPower] set PIN_POWER HIGH");
     }
-    if (timeNow - timePowerOn > 2000000) {
+    if ((long)(timeNow - timePowerOn) > 2000000) {
       powerSending = 1;
       Serial.println("[setPower] motor power: ON");
     }
   }
 
-  if (command == 0 && powerSending == 1 && controlSending == 1) {
-    setControl(0);
-  }
-
-  if (command == 0 && powerSending == 1 && controlSending == 0) {
-    digitalWrite(PIN_POWER, LOW);
-    powerSending = 0;
-    Serial.println("[setPower] motor power: OFF");
+  if (command == 0) {
+    if (controlSending == 1) {
+      setControl(0);
+    } else {
+      if (digitalRead(PIN_POWER) == HIGH) {
+        digitalWrite(PIN_POWER, LOW);
+        powerSending = 0;
+        Serial.println("[setPower] motor power: OFF");
+      }
+    }
   }
 }
 
@@ -120,12 +148,9 @@ void setControl(bool command) {
   }
 
   if (command == 0 && controlSending == 1) {
-    torqueCommand = 0.0;
-    speedCommand = 0.0;
-    if (fabsf(torqueCommand) < 0.1 && fabsf(speedCommand) < 0.1) {
-      can_sendControl(0);
-      controlSending = 0;
-      Serial.println("[setControl] motor control mode: OFF");
-    }
+    can_sendCommand(0.0, 0.0, 0.0, 0.0, 0.0);
+    can_sendControl(0);
+    controlSending = 0;
+    Serial.println("[setControl] motor control mode: OFF");
   }
 }
