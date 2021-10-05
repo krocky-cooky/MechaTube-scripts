@@ -6,19 +6,16 @@
 
 #include <Arduino.h>
 
-// #define SERIAL_USE_BLUETOOTH
 #define SERIAL_BUFSIZE 20
+// #define SERIAL_USE_BLUETOOTH
 
-extern bool motorPowerCommand;
-extern bool motorControlCommand;
-extern float torqueCommand;
-extern float speedCommand;
-
-
-/// @brief 受信したシリアル通信データを読み取り、コマンドが来ていれば反映する
-/// @param none
+/// @brief 受信したシリアル通信データを読み取り、コマンドが来ていれば取得して転記する
+/// @param[out] pPower モータ電源の指令値を格納する変数へのポインタ
+/// @param[out] pControl モータの制御モード指令値を格納する変数へのポインタ
+/// @param[out] pTorque トルク指令値を格納する変数へのポインタ
+/// @param[out] pSpeed 速度指令値を格納する変数へのポインタ
 /// @return 0:コマンドは来ていない, 1: 有効なコマンドが送られてきた
-int serial_decodeIncomingCommand() {
+int serial_getIncomingCommand(bool* pPower, bool* pControl, float* pTorque, float* pSpeed) {
   static char buf[SERIAL_BUFSIZE] = "";
   static int i = 0;
   static char bufBT[SERIAL_BUFSIZE] = "";
@@ -33,7 +30,7 @@ int serial_decodeIncomingCommand() {
     if (i >= SERIAL_BUFSIZE) i = 0;  // if the index exceeds the length of buffer, reset the index to zero
 
     if (c == ')') {                  // if a command transmission has finished, try to decode it
-      if (decodeCommand(buf) > 0) retval = 1;
+      if (decodeCommand(buf, pPower, pControl, pTorque, pSpeed) > 0) retval = 1;
     }
   }
 
@@ -67,10 +64,14 @@ int serial_sendVariablesJSON() {
 }
 
 
-/// @brief シリアル通信で送られてきた文字列コマンドをデコードし、グローバル変数に値を格納する
+/// @brief シリアル通信で送られてきた文字列コマンドをデコードし、与えられた変数に指令値を格納する
 /// @param[in] command 解釈する文字列
+/// @param[out] pPower モータ電源の指令値を格納する変数へのポインタ
+/// @param[out] pControl モータの制御モード指令値を格納する変数へのポインタ
+/// @param[out] pTorque トルク指令値を格納する変数へのポインタ
+/// @param[out] pSpeed 速度指令値を格納する変数へのポインタ
 /// @retval コマンドが無効な場合は0を、正常に解釈できた場合はコマンドの種類('p','m','t','s')を返す
-int decodeCommand(const char* command) {
+int decodeCommand(const char* command, bool* pPower, bool* pControl, float* pTorque, float* pSpeed) {
   int i = 0;
   if (command[0] == '(') {                // if the command starts form '(', it may be a valid command
     while (command[i] != ')') {           // find ')' which indicates the end of the command. if not found, invalid command
@@ -84,30 +85,30 @@ int decodeCommand(const char* command) {
 
     switch (key) {                             // copy the commanded value
       case 'p':
-        motorPowerCommand = (value > 0.5)? true : false;  // float value contains small error so it doesn't exactly eauql to 0 or 1 integer
-        if (!motorPowerCommand && motorControlCommand) {
-          motorControlCommand = false;         // if the power command is false but the control is still on, turns the control OFF
+        *pPower = (value > 0.5)? true : false;  // float value contains small error so it doesn't exactly eauql to 0 or 1 integer
+        if (!*pPower && *pControl) {
+          *pControl = false;         // if the power command is false but the control is still on, turns the control OFF
         }
-        torqueCommand = 0.0;
-        speedCommand = 0.0;
+        *pTorque = 0.0;
+        *pSpeed = 0.0;
         break;
       case 'm':
-        motorControlCommand = (value > 0.5)? true : false;
-        if (motorControlCommand && !motorPowerCommand) {
-          motorPowerCommand = true;            // if the control command is true but motor power is off, turns the power ON
+        *pControl = (value > 0.5)? true : false;
+        if (*pControl && !*pPower) {
+          *pPower = true;            // if the control command is true but motor power is off, turns the power ON
         }
-        torqueCommand = 0.0;
-        speedCommand = 0.0;
+        *pTorque = 0.0;
+        *pSpeed = 0.0;
         break;
       case 't':
-        motorPowerCommand = true;
-        motorControlCommand = true;
-        torqueCommand = value;
+        *pPower = true;
+        *pControl = true;
+        *pTorque = value;
         break;
       case 's':
-        motorPowerCommand = true;
-        motorControlCommand = true;
-        speedCommand = value;
+        *pPower = true;
+        *pControl = true;
+        *pSpeed = value;
         break;
       default:
         return 0;
