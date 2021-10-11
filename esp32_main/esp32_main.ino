@@ -4,6 +4,8 @@
 #define PIN_CANRX 32
 #define PIN_CANTX 33
 #define PIN_POWER 26
+#define PIN_HANDSWICH 35
+#define FORCE_THRESHOLD_OF_HANDSWICH 10.0 //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値[N]
 #define KP 0.1
 #define KD 1.0
 
@@ -77,7 +79,16 @@ void loop() {
   setControl(controlCommand);
 
   // 手元スイッチのON/OFFを取得する
-  handSwitch = true;
+  float touchSensorValue = analogRead(PIN_HANDSWICH); //手元スイッチのセンサの値
+  float force_on_handSwich = (4096 - touchSensorValue) / 4096 * 20; //手元スイッチのセンサにかかる力[N]
+  if (force_on_handSwich >= FORCE_THRESHOLD_OF_HANDSWICH){
+    handSwitch = true;
+  } else {
+    handSwitch = false;
+  }
+  Serial.print("handSwitch=");
+  Serial.print(handSwitch);
+  Serial.print(" ");
   
   // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
   if (controlSending) {
