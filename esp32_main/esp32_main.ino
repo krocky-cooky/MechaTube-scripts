@@ -5,13 +5,18 @@
 #define PIN_CANTX 33
 #define PIN_POWER 26
 #define PIN_HANDSWICH 35
-#define FORCE_THRESHOLD_OF_HANDSWICH 10.0 //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値[N]
 #define KP 0.1
 #define KD 1.0
 
+//閾値等
+#define FORCE_THRESHOLD_OF_HANDSWICH 10.0 //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
+#define THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION 0.5 //エキセン動作を判定するための、モータの回転速度の閾値 [rad/s]
+#define MAX_TORQUE 10.0 //許容する最大トルク [N・m]
+#define MAX_ABSOLUTE_SPEED 10.0 //許容する最大回転速さ [rad/s]
+
 // エキセントリックトレーニング用に追加した変数・定数
-bool eccentricTrainingMode = 1;     // エキセントリックトレーニングをしたいときは1になるフラグ
-float increaseOfToraueForEccentricTraining = 7.0;     // エキセントリックトレーニングでエキセン収縮時に増加するトルク量
+//bool eccentricTrainingMode = 1;     // エキセントリックトレーニングをしたいときは1になるフラグ
+float increaseOfToraueForEccentricTraining = 0.0;     // エキセントリックトレーニングでエキセン収縮時に増加するトルク量
 
 // 速度制御したいとき0,トルク制御したいとき1になるフラグ
 bool torqueCtrlMode = 0;
@@ -90,9 +95,9 @@ void loop() {
   } else {
     handSwitch = false;
   }
-  
   Serial.printf("handSwitch = %d\n", handSwitch);
 
+  //can通信の受信値を表示
   Serial.printf("{\"torque_recieved\":%f, \"speed_recieved\":%f, \"position_recieved\":%f}\n", torqueReceived, speedReceived, positionReceived);
   
   // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
@@ -103,37 +108,35 @@ void loop() {
       
       if (handSwitch) {     // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
 
-        if (eccentricTrainingMode) {
-          if (speedReceived > 0.5){
-            torqueSending = firstOrderDelay_torque_input_tau(torqueCommand+increaseOfToraueForEccentricTraining, (float)dtMicros/1e6, 1.0);
-          } else{
-            torqueSending = firstOrderDelay_torque_input_tau(torqueCommand, (float)dtMicros/1e6, 0.5);
-          }
+        // エキセン動作時は指示トルクを大きくする
+        if (speedReceived > THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION){
+          torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand+increaseOfToraueForEccentricTraining, (float)dtMicros/1e6, 1.0);
         } else{
-          torqueSending = firstOrderDelay_torque_input_tau(torqueCommand, (float)dtMicros/1e6, 1.0);
+          torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand, (float)dtMicros/1e6, 0.5);
         }
+        
       }else{
-        torqueSending = firstOrderDelay_torque_input_tau(0.0, (float)dtMicros/1e6, 1.0);
+        torqueSending = firstOrderDelay_torque_controlling_tau(0.0, (float)dtMicros/1e6, 1.0);
       }
 
-      if (torqueSending > 10.0){
-        torqueSending = 10.0;
+      //トルクが最大許容値を超える場合は、最大許容値を代入し、それ以上の上昇は許さない
+      if (torqueSending > MAX_TORQUE){
+        torqueSending = MAX_TORQUE;
       }
 
-      /*
-      // エキセントリックトレーニングモードの時
-      if (eccentricTrainingMode) {
-        // 回転数が一定以上の正の値の時(=おもりを下げるとき)はトルクを増加
-        if (speedReceived > 0.5){
-          torqueSending = torqueSending + increaseOfToraueForEccentricTraining;
-        }
-      }
-      */
-      
       speedSending = 0.0;            // 速度送信値は不要なので0とする
       firstOrderDelay_resetSpeed();  // 速度の1次遅れ計算用変数をリセット
 
-      can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信
+      //現在の回転速度が許容値以内ならトルクを送信
+      //回転速度が許容値の範囲外であれば、閾値の回転速度を速度指令し、それ以上の増速を防ぐ
+      if (speedReceived > MAX_ABSOLUTE_SPEED) {
+           can_sendCommand(0.0, MAX_ABSOLUTE_SPEED, 0.0, KD, 0.0);
+      } else if (speedReceived <- MAX_ABSOLUTE_SPEED) {
+        can_sendCommand(0.0, -MAX_ABSOLUTE_SPEED, 0.0, KD, 0.0);
+      } else {
+        can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信          
+      }
+      
 
     // 速度指令モードのとき
     } else {
