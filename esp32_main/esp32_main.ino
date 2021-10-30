@@ -9,6 +9,10 @@
 #define KP 0.1
 #define KD 1.0
 
+// エキセントリックトレーニング用に追加した変数・定数
+bool eccentricTrainingMode = 1;     // エキセントリックトレーニングをしたいときは1になるフラグ
+float increaseOfToraueForEccentricTraining = 4.0;     // エキセントリックトレーニングでエキセン収縮時に増加するトルク量
+
 // 速度制御したいとき0,トルク制御したいとき1になるフラグ
 bool torqueCtrlMode = 0;
 
@@ -101,6 +105,15 @@ void loop() {
       } else {
         torqueSending = firstOrderDelay_torque(0.0, (float)dtMicros/1e6);
       }
+
+      // エキセントリックトレーニングモードの時
+      if (eccentricTrainingMode) {
+        // 回転数が一定以上の正の値の時(=おもりを下げるとき)はトルクを増加
+        if (speedReceived > 0.5){
+          torqueSending = torqueSending + increaseOfToraueForEccentricTraining;
+        }
+      }
+      
       speedSending = 0.0;            // 速度送信値は不要なので0とする
       firstOrderDelay_resetSpeed();  // 速度の1次遅れ計算用変数をリセット
 
