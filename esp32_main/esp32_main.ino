@@ -11,7 +11,7 @@
 
 // エキセントリックトレーニング用に追加した変数・定数
 bool eccentricTrainingMode = 1;     // エキセントリックトレーニングをしたいときは1になるフラグ
-float increaseOfToraueForEccentricTraining = 4.0;     // エキセントリックトレーニングでエキセン収縮時に増加するトルク量
+float increaseOfToraueForEccentricTraining = 7.0;     // エキセントリックトレーニングでエキセン収縮時に増加するトルク量
 
 // 速度制御したいとき0,トルク制御したいとき1になるフラグ
 bool torqueCtrlMode = 0;
@@ -90,7 +90,7 @@ void loop() {
   } else {
     handSwitch = false;
   }
-  handSwitch = true; //ハンドスイッチが壊れているので暫定的措置として常時オン
+  
   Serial.printf("handSwitch = %d\n", handSwitch);
 
   Serial.printf("{\"torque_recieved\":%f, \"speed_recieved\":%f, \"position_recieved\":%f}\n", torqueReceived, speedReceived, positionReceived);
@@ -100,12 +100,27 @@ void loop() {
 
     // トルク指令モードのとき
     if (torqueCtrlMode) {
+      
       if (handSwitch) {     // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
-        torqueSending = firstOrderDelay_torque(torqueCommand, (float)dtMicros/1e6);
-      } else {
-        torqueSending = firstOrderDelay_torque(0.0, (float)dtMicros/1e6);
+
+        if (eccentricTrainingMode) {
+          if (speedReceived > 0.5){
+            torqueSending = firstOrderDelay_torque_input_tau(torqueCommand+increaseOfToraueForEccentricTraining, (float)dtMicros/1e6, 1.0);
+          } else{
+            torqueSending = firstOrderDelay_torque_input_tau(torqueCommand, (float)dtMicros/1e6, 0.5);
+          }
+        } else{
+          torqueSending = firstOrderDelay_torque_input_tau(torqueCommand, (float)dtMicros/1e6, 1.0);
+        }
+      }else{
+        torqueSending = firstOrderDelay_torque_input_tau(0.0, (float)dtMicros/1e6, 1.0);
       }
 
+      if (torqueSending > 10.0){
+        torqueSending = 10.0;
+      }
+
+      /*
       // エキセントリックトレーニングモードの時
       if (eccentricTrainingMode) {
         // 回転数が一定以上の正の値の時(=おもりを下げるとき)はトルクを増加
@@ -113,6 +128,7 @@ void loop() {
           torqueSending = torqueSending + increaseOfToraueForEccentricTraining;
         }
       }
+      */
       
       speedSending = 0.0;            // 速度送信値は不要なので0とする
       firstOrderDelay_resetSpeed();  // 速度の1次遅れ計算用変数をリセット

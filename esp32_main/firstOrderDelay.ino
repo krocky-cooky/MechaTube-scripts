@@ -3,7 +3,7 @@
 /// @author thgcMtdh
 /// @date 2021/10/5          
 
-#define TAU 5.0  // 時定数[s]
+#define TAU 1.0  // 時定数[s]
 
 // 1次遅れ系の計算に必要な現在と過去のデータをためておく
 typedef struct FirstOrderDelayData {
@@ -26,6 +26,19 @@ float firstOrderDelay_torque(float input, float dt) {
   torqueData.yprev = torqueData.y;
   torqueData.x = input;
   torqueData.y = 1/(2*TAU + dt) * ((2*TAU - dt) * torqueData.yprev + dt * (torqueData.x + torqueData.xprev));
+  return torqueData.y;
+}
+
+float firstOrderDelay_torque_input_tau(float input, float dt, float tau) {
+  torqueData.xprev = torqueData.x;
+  torqueData.yprev = torqueData.y;
+  torqueData.x = input;
+  torqueData.y = 1/(2*tau + dt) * ((2*tau - dt) * torqueData.yprev + dt * (torqueData.x + torqueData.xprev));
+
+  if (torqueData.y > input){
+    torqueData.y = input;
+  }
+  
   return torqueData.y;
 }
 
