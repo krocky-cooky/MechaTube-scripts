@@ -86,9 +86,10 @@ void loop() {
   } else {
     handSwitch = false;
   }
-  Serial.print("handSwitch=");
-  Serial.print(handSwitch);
-  Serial.print(" ");
+  handSwitch = true; //ハンドスイッチが壊れているので暫定的措置として常時オン
+  Serial.printf("handSwitch = %d\n", handSwitch);
+
+  Serial.printf("{\"torque_recieved\":%f, \"speed_recieved\":%f, \"position_recieved\":%f}\n", torqueReceived, speedReceived, positionReceived);
   
   // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
   if (controlSending) {
@@ -129,11 +130,10 @@ void loop() {
   delay(100);
 
   portENTER_CRITICAL_ISR(&onCanReceiveMux);  // CAN受信割込みと共有する変数へのアクセスはこの中で行う
-  
-  // Serial.printf("{\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueReceived, speedReceived, positionReceived);
-  Serial.printf("%x %x %x %x %x %x\n", canReceivedMsg[0], canReceivedMsg[1], canReceivedMsg[2], canReceivedMsg[3], canReceivedMsg[4], canReceivedMsg[5]);
-
+  //Serial.printf("{\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueReceived, speedReceived, positionReceived);
+  //Serial.printf("%x %x %x %x %x %x\n", canReceivedMsg[0], canReceivedMsg[1], canReceivedMsg[2], canReceivedMsg[3], canReceivedMsg[4], canReceivedMsg[5]);
   portEXIT_CRITICAL_ISR(&onCanReceiveMux);  // CAN受信割込みと共有する変数へのアクセスはこの中で行う
+
 }
 
 
