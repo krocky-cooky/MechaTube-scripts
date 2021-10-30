@@ -7,6 +7,8 @@
 #define PIN_HANDSWICH 35
 #define KP 0.1
 #define KD 1.0
+#define TAU_WHILE_ECCENTRIC_MOTION 0.5 //エキセン動作時の、一時遅れ系によるトルク指令の、時定数
+#define TAU_WHILE_NON_ECCENTRIC_MOTION 1.0 //エキセン動作以外の時の、一時遅れ系によるトルク指令の、時定数
 
 //閾値等
 #define FORCE_THRESHOLD_OF_HANDSWICH 10.0                             //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
@@ -110,13 +112,13 @@ void loop() {
         Serial.printf("increaseOfToraueForEccentricMotion = %f\n", increaseOfToraueForEccentricMotion);
         
         if (speedReceived > THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION){
-          torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand+increaseOfToraueForEccentricMotion, (float)dtMicros/1e6, 1.0);
+          torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand+increaseOfToraueForEccentricMotion, (float)dtMicros/1e6, TAU_WHILE_NON_ECCENTRIC_MOTION);
         } else{
-          torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand, (float)dtMicros/1e6, 0.5);
+          torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand, (float)dtMicros/1e6, TAU_WHILE_ECCENTRIC_MOTION);
         }
         
       }else{
-        torqueSending = firstOrderDelay_torque_controlling_tau(0.0, (float)dtMicros/1e6, 1.0);
+        torqueSending = firstOrderDelay_torque_controlling_tau(0.0, (float)dtMicros/1e6, TAU_WHILE_NON_ECCENTRIC_MOTION);
       }
 
       //トルクが最大許容値を超える場合は、最大許容値を代入し、それ以上の上昇は許さない
