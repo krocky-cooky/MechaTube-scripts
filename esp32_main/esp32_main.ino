@@ -9,14 +9,11 @@
 #define KD 1.0
 
 //閾値等
-#define FORCE_THRESHOLD_OF_HANDSWICH 10.0 //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
+#define FORCE_THRESHOLD_OF_HANDSWICH 10.0                             //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
 #define THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION 0.5 //エキセン動作を判定するための、モータの回転速度の閾値 [rad/s]
-#define MAX_TORQUE 10.0 //許容する最大トルク [N・m]
-#define MAX_ABSOLUTE_SPEED 10.0 //許容する最大回転速さ [rad/s]
+#define MAX_TORQUE 10.0                                               //許容する最大トルク [Nm]
+#define MAX_ABSOLUTE_SPEED 10.0                                       //許容する最大回転速さ [rad/s]
 
-// エキセントリックトレーニング用に追加した変数・定数
-//bool eccentricTrainingMode = 1;     // エキセントリックトレーニングをしたいときは1になるフラグ
-float increaseOfToraueForEccentricTraining = 0.0;     // エキセントリックトレーニングでエキセン収縮時に増加するトルク量
 
 // 速度制御したいとき0,トルク制御したいとき1になるフラグ
 bool torqueCtrlMode = 0;
@@ -25,10 +22,11 @@ bool torqueCtrlMode = 0;
 bool handSwitch = false;
 
 // シリアル通信で受信した指令値
-bool powerCommand = false;        // コンバータからモータへの電源供給指令
-bool controlCommand = false;      // モータ制御モードに入るかどうかの指令
-float torqueCommand = 0.0;        // トルク指令値 [Nm]
-float speedCommand = 0.0;         // 速度指令値 [rad/s]
+bool powerCommand = false;                            // コンバータからモータへの電源供給指令
+bool controlCommand = false;                          // モータ制御モードに入るかどうかの指令
+float torqueCommand = 0.0;                            // トルク指令値 [Nm]
+float speedCommand = 0.0;                             // 速度指令値 [rad/s]
+float increaseOfToraueForEccentricMotion = 0.0;     // エキセン動作時に増加するトルク量 [Nm]
 
 // 実際にモータやコンバータに送信している指令値
 bool powerSending = false;
@@ -81,7 +79,7 @@ void loop() {
   dtMicros = timeNow - timePrev;
 
   // シリアル通信で指令値を受け取る
-  serial_getIncomingCommand(&powerCommand, &controlCommand, &torqueCtrlMode, &torqueCommand, &speedCommand);
+  serial_getIncomingCommand(&powerCommand, &controlCommand, &torqueCtrlMode, &torqueCommand, &speedCommand, &increaseOfToraueForEccentricMotion);
 
   // 指令値に応じて、モータの電源とモータ制御モードを変更する
   setPower(powerCommand);
@@ -109,8 +107,10 @@ void loop() {
       if (handSwitch) {     // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
 
         // エキセン動作時は指示トルクを大きくする
+        Serial.printf("increaseOfToraueForEccentricMotion = %f\n", increaseOfToraueForEccentricMotion);
+        
         if (speedReceived > THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION){
-          torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand+increaseOfToraueForEccentricTraining, (float)dtMicros/1e6, 1.0);
+          torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand+increaseOfToraueForEccentricMotion, (float)dtMicros/1e6, 1.0);
         } else{
           torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand, (float)dtMicros/1e6, 0.5);
         }
