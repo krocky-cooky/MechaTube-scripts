@@ -14,11 +14,12 @@
 #define FORCE_THRESHOLD_OF_HANDSWICH 10.0                             //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
 #define THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION 0.5 //エキセン動作を判定するための、モータの回転速度の閾値 [rad/s]
 #define MAX_TORQUE 10.0                                               //許容する最大トルク [Nm]
-#define MAX_ABSOLUTE_SPEED 10.0                                       //許容する最大回転速さ [rad/s]
+#define MAX_SPEED_WHILE_ECCENTRIC_MOTION 10.0                                       //エキセン動作時の許容する最大回転速さ [rad/s]
 
 
-// 速度制御したいとき0,トルク制御したいとき1になるフラグ
-bool torqueCtrlMode = 0;
+// フラグ等
+bool torqueCtrlMode = 0; // 速度制御したいとき0,トルク制御したいとき1になるフラグ
+//bool isokineticTrainingMode = 0; // アイソキネティックトレーニングの時に1になるフラグ
 
 // ユーザの手元にあるスイッチなど、トルク出力をON/OFFする指令
 bool handSwitch = false;
@@ -29,6 +30,8 @@ bool controlCommand = false;                          // モータ制御モー�
 float torqueCommand = 0.0;                            // トルク指令値 [Nm]
 float speedCommand = 0.0;                             // 速度指令値 [rad/s]
 float increaseOfToraueForEccentricMotion = 0.0;     // エキセン動作時に増加するトルク量 [Nm]
+//float speedWhileIsokineticTraining = 10.0 ; // アイソキネティックトレーニング時の回転スピード [rad/s]
+float maxSpeedWhileConcentricMotion = 10.0; // コンセン動作時に許容する最大回転速さ [rad/s], アイソキネティックトレーニング時に操作する変数
 
 // 実際にモータやコンバータに送信している指令値
 bool powerSending = false;
@@ -81,7 +84,7 @@ void loop() {
   dtMicros = timeNow - timePrev;
 
   // シリアル通信で指令値を受け取る
-  serial_getIncomingCommand(&powerCommand, &controlCommand, &torqueCtrlMode, &torqueCommand, &speedCommand, &increaseOfToraueForEccentricMotion);
+  serial_getIncomingCommand(&powerCommand, &controlCommand, &torqueCtrlMode, &torqueCommand, &speedCommand, &increaseOfToraueForEccentricMotion, &maxSpeedWhileConcentricMotion);
 
   // 指令値に応じて、モータの電源とモータ制御モードを変更する
   setPower(powerCommand);
@@ -105,7 +108,8 @@ void loop() {
 
     // トルク指令モードのとき
     if (torqueCtrlMode) {
-      
+
+      // トルクの指示値を代入
       if (handSwitch) {     // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
 
         // エキセン動作時は指示トルクを大きくする
@@ -129,15 +133,52 @@ void loop() {
       speedSending = 0.0;            // 速度送信値は不要なので0とする
       firstOrderDelay_resetSpeed();  // 速度の1次遅れ計算用変数をリセット
 
-      //現在の回転速度が許容値以内ならトルクを送信
-      //回転速度が許容値の範囲外であれば、閾値の回転速度を速度指令し、それ以上の増速を防ぐ
-      if (speedReceived > MAX_ABSOLUTE_SPEED) {
-           can_sendCommand(0.0, MAX_ABSOLUTE_SPEED, 0.0, KD, 0.0);
-      } else if (speedReceived <- MAX_ABSOLUTE_SPEED) {
-        can_sendCommand(0.0, -MAX_ABSOLUTE_SPEED, 0.0, KD, 0.0);
+
+     // CANにトルクまたは速度の指令値を送信
+     //　回転速度が指定範囲内であれば、トルク指令をし、そうでなければ速度指令をする
+      if (speedReceived > MAX_SPEED_WHILE_ECCENTRIC_MOTION) {
+        //回転速度が許容値を超えたら、閾値の回転速度を速度指令し、それ以上の増速を防ぐ
+           can_sendCommand(0.0, MAX_SPEED_WHILE_ECCENTRIC_MOTION, 0.0, KD, 0.0);
+      } else if (speedReceived < - maxSpeedWhileConcentricMotion) {
+        // アイソキネティックトレーニングのために、コンセン動作時の速さはmaxSpeedWhileConcentricMotion以下にするよう速度指令する
+        can_sendCommand(0.0, - maxSpeedWhileConcentricMotion, 0.0, KD, 0.0);
       } else {
         can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信          
       }
+      
+/*
+      // CANにトルクまたは速度の指令値を送信
+      if (handSwitch) {
+        if (isokineticTrainingMode) {
+          
+          //アイソキネティックトレーニングの時は、おもりを引き上げる速さをspeedWhileIsokineticTraining以下にする
+          //現在の回転速度が許容値以内ならトルクを送信
+          //回転速度が許容値の範囲外であれば、閾値の回転速度を速度指令し、それ以上の増速を防ぐ
+          if (speedReceived < - speedWhileIsokineticTraining) {
+            can_sendCommand(0.0, - speedWhileIsokineticTraining, 0.0, KD, 0.0);
+          } else if (speedReceived > MAX_ABSOLUTE_SPEED) {
+            can_sendCommand(0.0, MAX_ABSOLUTE_SPEED, 0.0, KD, 0.0);
+          } else {
+            can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信          
+          }   
+       
+        } else {
+  
+          // アイソキネティックトレーニングでない時はこちら
+          
+          if (speedReceived > MAX_ABSOLUTE_SPEED) {
+               can_sendCommand(0.0, MAX_ABSOLUTE_SPEED, 0.0, KD, 0.0);
+          } else if (speedReceived <- MAX_ABSOLUTE_SPEED) {
+            can_sendCommand(0.0, -MAX_ABSOLUTE_SPEED, 0.0, KD, 0.0);
+          } else {
+            can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信          
+          }
+          
+        }
+      } else {
+        can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信   
+      }
+      */
       
 
     // 速度指令モードのとき
