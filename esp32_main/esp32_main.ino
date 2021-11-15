@@ -88,10 +88,6 @@ void loop() {
   setPower(powerCommand);
   setControl(controlCommand);
 
-  //コンバータの電圧を表示
-  float voltageOfConverter = analogRead(34) * 3.3 * 21 / 4096; //コンバータの電圧の値
-  Serial.printf("the voltage of converter = %f\n", voltageOfConverter);
-
   // 手元スイッチのON/OFFを取得する
   float touchSensorValue = analogRead(PIN_HANDSWICH); //手元スイッチのセンサの値
   float force_on_handSwich = (4096 - touchSensorValue) / 4096 * 20; //手元スイッチのセンサにかかる力[N]
@@ -101,6 +97,11 @@ void loop() {
     handSwitch = false;
   }
   Serial.printf("handSwitch = %d\n", handSwitch);
+
+  //コンバータの電圧を表示
+  float voltageOfConverter = analogRead(34) * 3.3 * 21 / 4096; //コンバータの電圧の値
+  Serial.printf("the voltage of converter = %f\n", voltageOfConverter);
+
 
   //can通信の受信値を表示
   Serial.printf("{\"torque_recieved\":%f, \"speed_recieved\":%f, \"position_recieved\":%f}\n", torqueReceived, speedReceived, positionReceived);
@@ -138,10 +139,7 @@ void loop() {
 
      // CANにトルクまたは速度の指令値を送信
      //　回転速度が指定範囲内であれば、トルク指令をし、そうでなければ速度指令をする
-      if (speedReceived > MAX_SPEED) {
-        //回転速度が許容値を超えたら、閾値の回転速度を速度指令し、それ以上の増速を防ぐ
-           can_sendCommand(0.0, MAX_SPEED, 0.0, KD, 0.0);
-      } else if (speedReceived < - maxSpeedWhileConcentricMotion) {
+     if (speedReceived < - maxSpeedWhileConcentricMotion) {
         // アイソキネティックトレーニングのために、コンセン動作時の速さはmaxSpeedWhileConcentricMotion以下にするよう速度指令する
         // アイソキネティックトレーニング以外では MAX_SPEED以下に制限
         can_sendCommand(0.0, - maxSpeedWhileConcentricMotion, 0.0, KD, 0.0);
