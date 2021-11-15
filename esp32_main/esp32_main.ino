@@ -88,6 +88,10 @@ void loop() {
   setPower(powerCommand);
   setControl(controlCommand);
 
+  //コンバータの電圧を表示
+  float voltageOfConverter = analogRead(34) * 3.3 * 21 / 4096; //コンバータの電圧の値
+  Serial.printf("the voltage of converter = %f\n", voltageOfConverter);
+
   // 手元スイッチのON/OFFを取得する
   float touchSensorValue = analogRead(PIN_HANDSWICH); //手元スイッチのセンサの値
   float force_on_handSwich = (4096 - touchSensorValue) / 4096 * 20; //手元スイッチのセンサにかかる力[N]
