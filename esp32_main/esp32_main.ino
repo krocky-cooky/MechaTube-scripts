@@ -1,11 +1,22 @@
 #include <Arduino.h>
 #include <CAN.h>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+
+#include "bluetooth_callbacks.h"
+
 
 #define PIN_CANRX 32
 #define PIN_CANTX 33
 #define PIN_POWER 26
 #define KP 0.1
 #define KD 1.0
+
+// bluetooth用　各uuid
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define BLUETOOTH_ADVERTISE_NAME "ESP32"
 
 // 速度制御したいとき0,トルク制御したいとき1になるフラグ
 bool torqueCtrlMode = 0;
@@ -24,6 +35,10 @@ bool powerSending = false;
 bool controlSending = false;
 float torqueSending = 0.0;
 float speedSending = 0.0;
+
+bool bluetoothConnected = false; // bluetoothの接続が行われているかどうか
+bool advertising = false;
+
 
 // (待ち時間等の処理に使う)時刻の記録
 unsigned long timeNow = 0;        // 各loopの開始時刻 [us]
@@ -45,6 +60,7 @@ void setup() {
   pinMode(PIN_POWER, OUTPUT);
   digitalWrite(PIN_POWER, LOW);
   
+  
   Serial.begin(9600);
   while (!Serial) delay(1);
 
@@ -58,6 +74,25 @@ void setup() {
   // reference: https://github.com/sandeepmistry/arduino-CAN/issues/62
   volatile uint32_t* pREG_IER = (volatile uint32_t*)0x3ff6b010;
   *pREG_IER &= ~(uint8_t)0x10;
+
+  //以下bluetooth通信用setup
+
+  BLEDevice::init(BLUETOOTH_ADVERTISE_NAME);
+  BLEServer* pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new funcServerCallbacks(&bluetoothConnected));
+  BLEService* pService = pServer->createService(SERVICE_UUID);
+  BLECharacteristic* pCharacteristic = pService->createCharacteristic(
+    CHARACTERISTIC_UUID,
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_WRITE
+  );
+  pCharacteristic->setCallbacks(new characteristicCallbacks(&powerCommand, &controlCommand, &torqueCtrlMode, &torqueCommand, &speedCommand));
+  pService->start();
+  BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);  // iPhone接続の問題に役立つ
+  pAdvertising->setMinPreferred(0x12);
+  BLEDevice::startAdvertising();
   
   Serial.println("[setup] setup comleted");
 }
@@ -78,6 +113,14 @@ void loop() {
 
   // 手元スイッチのON/OFFを取得する
   handSwitch = true;
+
+  //bluetooth接続されていない場合advertisingを始める
+  if(!bluetoothConnected && !advertising) {
+    BLEDevice::startAdvertising();
+    advertising = true;
+  }else if(bluetoothConnected){
+    advertising = false;
+  }
   
   // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
   if (controlSending) {
@@ -118,6 +161,7 @@ void loop() {
   delay(100);
 
   portENTER_CRITICAL_ISR(&onCanReceiveMux);  // CAN受信割込みと共有する変数へのアクセスはこの中で行う
+
   
   // Serial.printf("{\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueReceived, speedReceived, positionReceived);
   Serial.printf("%x %x %x %x %x %x\n", canReceivedMsg[0], canReceivedMsg[1], canReceivedMsg[2], canReceivedMsg[3], canReceivedMsg[4], canReceivedMsg[5]);
