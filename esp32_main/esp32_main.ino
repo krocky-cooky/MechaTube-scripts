@@ -10,6 +10,8 @@
 #define PIN_CANRX 32
 #define PIN_CANTX 33
 #define PIN_POWER 26
+#define PIN_HANDSWICH 35
+#define FORCE_THRESHOLD_OF_HANDSWICH 10.0 //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値[N]
 #define KP 0.1
 #define KD 1.0
 
@@ -112,7 +114,6 @@ void loop() {
   setControl(controlCommand);
 
   // 手元スイッチのON/OFFを取得する
-  handSwitch = true;
 
   //bluetooth接続されていない場合advertisingを始める
   if(!bluetoothConnected && !advertising) {
@@ -121,6 +122,17 @@ void loop() {
   }else if(bluetoothConnected){
     advertising = false;
   }
+  float touchSensorValue = analogRead(PIN_HANDSWICH); //手元スイッチのセンサの値
+  float force_on_handSwich = (4096 - touchSensorValue) / 4096 * 20; //手元スイッチのセンサにかかる力[N]
+  if (force_on_handSwich >= FORCE_THRESHOLD_OF_HANDSWICH){
+    handSwitch = true;
+  } else {
+    handSwitch = false;
+  }
+  handSwitch = true; //ハンドスイッチが壊れているので暫定的措置として常時オン
+  Serial.printf("handSwitch = %d\n", handSwitch);
+
+  Serial.printf("{\"torque_recieved\":%f, \"speed_recieved\":%f, \"position_recieved\":%f}\n", torqueReceived, speedReceived, positionReceived);
   
   // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
   if (controlSending) {
@@ -161,12 +173,10 @@ void loop() {
   delay(100);
 
   portENTER_CRITICAL_ISR(&onCanReceiveMux);  // CAN受信割込みと共有する変数へのアクセスはこの中で行う
-
-  
-  // Serial.printf("{\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueReceived, speedReceived, positionReceived);
-  Serial.printf("%x %x %x %x %x %x\n", canReceivedMsg[0], canReceivedMsg[1], canReceivedMsg[2], canReceivedMsg[3], canReceivedMsg[4], canReceivedMsg[5]);
-
+  //Serial.printf("{\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueReceived, speedReceived, positionReceived);
+  //Serial.printf("%x %x %x %x %x %x\n", canReceivedMsg[0], canReceivedMsg[1], canReceivedMsg[2], canReceivedMsg[3], canReceivedMsg[4], canReceivedMsg[5]);
   portEXIT_CRITICAL_ISR(&onCanReceiveMux);  // CAN受信割込みと共有する変数へのアクセスはこの中で行う
+
 }
 
 
