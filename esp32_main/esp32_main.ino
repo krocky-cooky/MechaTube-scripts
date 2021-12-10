@@ -63,7 +63,7 @@ void setup() {
   digitalWrite(PIN_POWER, LOW);
   
   
-  Serial.begin(9600);
+  Serial.begin(115200);
   while (!Serial) delay(1);
 
   CAN.setPins(PIN_CANRX, PIN_CANTX);
@@ -113,8 +113,6 @@ void loop() {
   setPower(powerCommand);
   setControl(controlCommand);
 
-  // 手元スイッチのON/OFFを取得する
-  //handSwitch = true;
   /*
   //bluetooth接続されていない場合advertisingを始める
   if(!bluetoothConnected && !advertising) {
@@ -124,9 +122,9 @@ void loop() {
     advertising = false;
   }
   */
-  /*
 
-    float touchSensorValue = analogRead(PIN_HANDSWICH); //手元スイッチのセンサの値
+  // 手元スイッチのON/OFFを取得する
+  float touchSensorValue = analogRead(PIN_HANDSWICH); //手元スイッチのセンサの値
   float force_on_handSwich = (4096 - touchSensorValue) / 4096 * 20; //手元スイッチのセンサにかかる力[N]
   if (force_on_handSwich >= FORCE_THRESHOLD_OF_HANDSWICH){
     handSwitch = true;
@@ -135,7 +133,6 @@ void loop() {
   }
   //handSwitch = true; //ハンドスイッチが壊れているので暫定的措置として常時オン
   //Serial.printf("handSwitch = %d\n", handSwitch);
-  */
   
   // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
   if (controlSending) {
@@ -164,6 +161,11 @@ void loop() {
 
       can_sendCommand(0.0, speedSending, 0.0, KD, 0.0);
     }
+
+    portENTER_CRITICAL(&onCanReceiveMux);
+    unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
+    Serial.printf("{\"handSwitch\":%d, \"torque\":%f, \"speed\":%f, \"position\":%f}\n", handSwitch, torqueReceived, speedReceived, positionReceived);
+    portEXIT_CRITICAL(&onCanReceiveMux);
   
   // モータ制御モードに入っていないとき、全ての変数を0にリセットしておく
   } else {
@@ -174,14 +176,6 @@ void loop() {
   }
 
   delay(100);
-
-  portENTER_CRITICAL_ISR(&onCanReceiveMux);  // CAN受信割込みと共有する変数へのアクセスはこの中で行う
-
-  
-  // Serial.printf("{\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueReceived, speedReceived, positionReceived);
-  //Serial.printf("%x %x %x %x %x %x\n", canReceivedMsg[0], canReceivedMsg[1], canReceivedMsg[2], canReceivedMsg[3], canReceivedMsg[4], canReceivedMsg[5]);
-
-  portEXIT_CRITICAL_ISR(&onCanReceiveMux);  // CAN受信割込みと共有する変数へのアクセスはこの中で行う
 }
 
 

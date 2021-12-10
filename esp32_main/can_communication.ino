@@ -48,7 +48,7 @@ int can_sendCommand(float position, float speed, float kp, float kd, float torqu
   kdSent = kd;
   torqueSent = torque;
 
-  //Serial.printf("{\"torque_ref\":%f, \"speed_ref\":%f, \"position_ref\":%f}\n", torqueSent, speedSent, positionSent);
+  Serial.printf("{\"torque_ref\":%f, \"speed_ref\":%f, \"position_ref\":%f}\n", torqueSent, speedSent, positionSent);
   // Serial.printf("%x %x %x %x %x %x %x %x\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
 
   return 1;
@@ -85,7 +85,7 @@ void can_onReceive(int packetSize) {
     // buf[i] = CAN.read();
     canReceivedMsg[i] = CAN.read();
   }
-  unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);  // 1007 ここでCPUがcore panicする
+  // unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);  // 1007 ここでCPUがcore panicする
   
   portEXIT_CRITICAL_ISR(&onCanReceiveMux);  // mainloopと共有する変数の更新はこの中で行う
 }
