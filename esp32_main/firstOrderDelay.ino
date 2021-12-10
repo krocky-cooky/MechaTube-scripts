@@ -3,7 +3,7 @@
 /// @author thgcMtdh
 /// @date 2021/10/5          
 
-#define TAU 5.0  // 時定数[s]
+#define TAU 1.0  // 時定数[s]
 
 // 1次遅れ系の計算に必要な現在と過去のデータをためておく
 typedef struct FirstOrderDelayData {
