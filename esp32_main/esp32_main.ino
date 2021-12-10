@@ -4,7 +4,7 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 
-//#include "bluetooth_callbacks.h"
+#include "bluetooth_callbacks.h"
 
 
 #define PIN_CANRX 32
@@ -78,7 +78,8 @@ void setup() {
   *pREG_IER &= ~(uint8_t)0x10;
 
   //以下bluetooth通信用setup
-  /*
+  Serial.print("advertising name : ");
+  Serial.println(BLUETOOTH_ADVERTISE_NAME);
   BLEDevice::init(BLUETOOTH_ADVERTISE_NAME);
   BLEServer* pServer = BLEDevice::createServer();
   pServer->setCallbacks(new funcServerCallbacks(&bluetoothConnected));
@@ -95,7 +96,7 @@ void setup() {
   pAdvertising->setMinPreferred(0x06);  // iPhone接続の問題に役立つ
   pAdvertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
-  */
+  
   Serial.println("[setup] setup comleted");
 }
 
@@ -113,15 +114,16 @@ void loop() {
   setPower(powerCommand);
   setControl(controlCommand);
 
-  /*
+  
   //bluetooth接続されていない場合advertisingを始める
   if(!bluetoothConnected && !advertising) {
     BLEDevice::startAdvertising();
+    Serial.println("start advertising");
     advertising = true;
   }else if(bluetoothConnected){
     advertising = false;
   }
-  */
+  
 
   // 手元スイッチのON/OFFを取得する
   float touchSensorValue = analogRead(PIN_HANDSWICH); //手元スイッチのセンサの値
@@ -161,10 +163,9 @@ void loop() {
 
       can_sendCommand(0.0, speedSending, 0.0, KD, 0.0);
     }
-
+    Serial.printf("{\"handSwitch\":%d, \"torque\":%f, \"speed\":%f, \"position\":%f}\n", handSwitch, torqueReceived, speedReceived, positionReceived);
     portENTER_CRITICAL(&onCanReceiveMux);
     unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
-    Serial.printf("{\"handSwitch\":%d, \"torque\":%f, \"speed\":%f, \"position\":%f}\n", handSwitch, torqueReceived, speedReceived, positionReceived);
     portEXIT_CRITICAL(&onCanReceiveMux);
   
   // モータ制御モードに入っていないとき、全ての変数を0にリセットしておく

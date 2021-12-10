@@ -48,7 +48,7 @@ int can_sendCommand(float position, float speed, float kp, float kd, float torqu
   kdSent = kd;
   torqueSent = torque;
 
-  Serial.printf("{\"torque_ref\":%f, \"speed_ref\":%f, \"position_ref\":%f}\n", torqueSent, speedSent, positionSent);
+  //Serial.printf("{\"torque_ref\":%f, \"speed_ref\":%f, \"position_ref\":%f}\n", torqueSent, speedSent, positionSent);
   // Serial.printf("%x %x %x %x %x %x %x %x\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
 
   return 1;
