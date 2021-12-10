@@ -47,7 +47,7 @@ void setup() {
   pinMode(PIN_POWER, OUTPUT);
   digitalWrite(PIN_POWER, LOW);
   
-  Serial.begin(9600);
+  Serial.begin(115200);
   while (!Serial) delay(1);
 
   CAN.setPins(PIN_CANRX, PIN_CANTX);
