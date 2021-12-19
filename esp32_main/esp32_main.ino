@@ -96,6 +96,10 @@ void loop() {
   } else {
     handSwitch = false;
   }
+
+  //ハンドスイッチを取った
+  handSwitch = true;
+  
   Serial.printf("handSwitch = %d\n", handSwitch);
 
   //コンバータの電圧を表示
@@ -104,11 +108,13 @@ void loop() {
 
 
   //can通信の受信値を表示
+  unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
   Serial.printf("{\"torque_recieved\":%f, \"speed_recieved\":%f, \"position_recieved\":%f}\n", torqueReceived, speedReceived, positionReceived);
   
+
   // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
   if (controlSending) {
-
+  /*
     // トルク指令モードのとき
     if (torqueCtrlMode) {
 
@@ -146,8 +152,63 @@ void loop() {
       } else {
         can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信          
       }
+      */
+
+     if (torqueCtrlMode) {
+
+      // トルクの指示値を代入
+      if (handSwitch) {     // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
+
+        // エキセン動作時は指示トルクを大きくする
+        Serial.printf("increaseOfToraueForEccentricMotion = %f\n", increaseOfToraueForEccentricMotion);
+        
+        if (speedReceived > THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION){
+          torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand+increaseOfToraueForEccentricMotion, (float)dtMicros/1e6, TAU_WHILE_NON_ECCENTRIC_MOTION);
+        } else{
+          torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand, (float)dtMicros/1e6, TAU_WHILE_NON_ECCENTRIC_MOTION);
+        }
+        
+      }else{
+        torqueSending = 0.0;
+      }
+
+      //トルクが最大許容値を超える場合は、最大許容値を代入し、それ以上の上昇は許さない
+      if (torqueSending > MAX_TORQUE){
+        torqueSending = MAX_TORQUE;
+      }
+
+      speedSending = 0.0;            // 速度送信値は不要なので0とする
+      firstOrderDelay_resetSpeed();  // 速度の1次遅れ計算用変数をリセット
+
+      
+
+      /*
+     // CANにトルクまたは速度の指令値を送信
+     //　回転速度が指定範囲内であれば、トルク指令をし、そうでなければ速度指令をする
+     if (speedReceived < - maxSpeedWhileConcentricMotion) {
+        // アイソキネティックトレーニングのために、コンセン動作時の速さはmaxSpeedWhileConcentricMotion以下にするよう速度指令する
+        // アイソキネティックトレーニング以外では MAX_SPEED以下に制限
+        can_sendCommand(0.0, - maxSpeedWhileConcentricMotion, 0.0, KD, 0.0);
+      } else {
+        can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信          
+      }
+      */
+      //can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);
 
 
+      //等速性トレーニングのためのコード
+      //持ち上げるときの制限速度が1.1未満であれば、等速性トレーニングにする
+      if (maxSpeedWhileConcentricMotion<1.1){
+        if(speedReceived < - maxSpeedWhileConcentricMotion){
+          can_sendCommand(0.0, - maxSpeedWhileConcentricMotion, 0.0, KD, 0.0);
+        }else{
+          can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信
+        }
+      }else{
+        can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信
+      }
+      
+      
     // 速度指令モードのとき
     } else {
       if (handSwitch) {

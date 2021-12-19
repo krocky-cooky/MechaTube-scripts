@@ -85,7 +85,7 @@ void can_onReceive(int packetSize) {
     // buf[i] = CAN.read();
     canReceivedMsg[i] = CAN.read();
   }
-  unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);  // 1007 ここでCPUがcore panicする
+  //unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);  // 1007 ここでCPUがcore panicする
   
   portEXIT_CRITICAL_ISR(&onCanReceiveMux);  // mainloopと共有する変数の更新はこの中で行う
 }
