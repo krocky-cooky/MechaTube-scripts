@@ -5,7 +5,7 @@
 #define PIN_CANTX 33
 #define PIN_POWER 26
 #define PIN_HANDSWICH 35
-#define FORCE_THRESHOLD_OF_HANDSWICH 10.0 //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値[N]
+#define FORCE_THRESHOLD_OF_HANDSWICH 5.0 //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値[N]
 #define KP 0.1
 #define KD 1.0
 
@@ -86,7 +86,7 @@ void loop() {
   } else {
     handSwitch = false;
   }
-  handSwitch = true; //ハンドスイッチが壊れているので暫定的措置として常時オン
+  
   Serial.printf("handSwitch = %d\n", handSwitch);
 
   Serial.printf("{\"torque_recieved\":%f, \"speed_recieved\":%f, \"position_recieved\":%f}\n", torqueReceived, speedReceived, positionReceived);
