@@ -13,7 +13,7 @@
 //閾値等
 #define FORCE_THRESHOLD_OF_HANDSWICH 10.0                             //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
 #define THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION 0.5 //エキセン動作を判定するための、モータの回転速度の閾値 [rad/s]
-#define MAX_TORQUE 10.0                                               //許容する最大トルク [Nm]
+#define MAX_TORQUE 15.0                                               //許容する最大トルク [Nm]
 #define MAX_SPEED 10.0                                       //許容する最大回転速さ [rad/s]
 
 
@@ -198,14 +198,20 @@ void loop() {
 
       //等速性トレーニングのためのコード
       //持ち上げるときの制限速度が1.1未満であれば、等速性トレーニングにする
-      if (maxSpeedWhileConcentricMotion<1.1){
-        if(speedReceived < - maxSpeedWhileConcentricMotion){
-          can_sendCommand(0.0, - maxSpeedWhileConcentricMotion, 0.0, KD, 0.0);
+      //トルク制限つき
+      //トルクが最大許容値を超える場合は、最大許容値を代入し、それ以上の上昇は許さない
+      if (torqueReceived > MAX_TORQUE){
+        can_sendCommand(0.0, 0.0, 0.0, 0.0, MAX_TORQUE);
+      }else{
+        if (maxSpeedWhileConcentricMotion<1.1){
+          if(speedReceived < - maxSpeedWhileConcentricMotion){
+            can_sendCommand(0.0, - maxSpeedWhileConcentricMotion, 0.0, KD, 0.0);
+          }else{
+            can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信
+          }
         }else{
           can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信
-        }
-      }else{
-        can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信
+        } 
       }
       
       
