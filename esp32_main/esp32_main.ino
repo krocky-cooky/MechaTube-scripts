@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <CAN.h>
+#include <math.h>
+#include <stdio.h>
 
 #define PIN_CANRX 32
 #define PIN_CANTX 33
@@ -48,6 +50,18 @@ unsigned long timeControlOn = 0;  // モータ制御モードに入った時刻 
 float positionSent, speedSent, kpSent, kdSent, torqueSent;  // 直近のCAN送信データを記録しておく
 volatile float positionReceived, speedReceived, torqueReceived;      // 直近のCAN受信データを記録しておく
 volatile uint8_t canReceivedMsg[6];  // 直近のCAN受信データそのものを記録しておく
+volatile float previousPositionRecieved=200.0; //直前の位置の受信データ
+volatile float numberOfTimesYouCrossedOverFromPmaxToPmin=0.0; //位置=95.5から位置=-95.5に移動した回数。逆向きに跨いだら回数を-1する
+
+//修正された位置
+//position=95.5とposition=-95.5の間で位置の値が不連続にならないようにする
+//例えば、position=95.5からposition=-95.5にまたぐ時に、position=-80ではなくposition=111にする
+volatile float positionModified;
+
+//PrimeFittnessのような可変抵抗トレーニングの実装のための変数
+float increaseOfToraueWhenPeak = 0.0;//負荷がピーク時のトルクがベーストルクよりどれだけ高いか
+float positionWhenPeak = 0.0;//負荷のピーク位置
+float rangeOfTorqueChange= 0.0;//ピーク位置に対して+-いくつの位置まで行けばベーストルクになるか。言い換えれば、負荷のピークの裾野の大きさ
 
 // CAN受信割込みとmainloopの双方からアクセスする変数の排他処理
 portMUX_TYPE onCanReceiveMux = portMUX_INITIALIZER_UNLOCKED;
@@ -82,7 +96,7 @@ void loop() {
   dtMicros = timeNow - timePrev;
 
   // シリアル通信で指令値を受け取る
-  serial_getIncomingCommand(&powerCommand, &controlCommand, &torqueCtrlMode, &torqueCommand, &speedCommand, &increaseOfToraueForEccentricMotion, &maxSpeedWhileConcentricMotion);
+  serial_getIncomingCommand(&powerCommand, &controlCommand, &torqueCtrlMode, &torqueCommand, &speedCommand, &increaseOfToraueForEccentricMotion, &maxSpeedWhileConcentricMotion, &increaseOfToraueWhenPeak, &positionWhenPeak, &rangeOfTorqueChange);
 
   // 指令値に応じて、モータの電源とモータ制御モードを変更する
   setPower(powerCommand);
@@ -195,7 +209,7 @@ void loop() {
       */
       //can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);
 
-
+/*
       //等速性トレーニングのためのコード
       //持ち上げるときの制限速度が1.1未満であれば、等速性トレーニングにする
       //トルク制限つき
@@ -213,7 +227,41 @@ void loop() {
           can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);  // 送信
         } 
       }
-      
+*/
+    //位置を修正
+    //position=95.5とposition=-95.5の間で位置の値が不連続にならないようにする
+    //例えば、position=95.5からposition=-95.5にまたぐ時に、position=-80ではなくposition=111にする
+    if (previousPositionRecieved!=200 && previousPositionRecieved*positionReceived<-2500.0){
+      if(positionReceived<0){
+        numberOfTimesYouCrossedOverFromPmaxToPmin+=1;
+      }else if(positionReceived>0){
+        numberOfTimesYouCrossedOverFromPmaxToPmin-=1;
+      }
+    }
+    previousPositionRecieved = positionReceived;
+    positionModified = positionReceived + 191*numberOfTimesYouCrossedOverFromPmaxToPmin;
+
+            Serial.printf("numberOfTimesYouCrossedOverFromPmaxToPmin = %f\n",numberOfTimesYouCrossedOverFromPmaxToPmin);
+        Serial.printf("positionModified = %f\n",positionModified);
+        Serial.printf("fabsf(positionModified-positionWhenPeak) = %f\n",fabsf(positionModified-positionWhenPeak));
+        Serial.printf("increaseOfToraueWhenPeak = %f\n", increaseOfToraueWhenPeak);
+        Serial.printf("positionWhenPeak = %f\n", positionWhenPeak);
+        Serial.printf("rangeOfTorqueChange = %f\n", rangeOfTorqueChange);
+    //PrimeFittnessのような可変抵抗トレーニングの実装
+      if (torqueReceived > MAX_TORQUE){
+        can_sendCommand(0.0, 0.0, 0.0, 0.0, MAX_TORQUE);
+      }else{
+        //ピーク時のトルクの増分と、負荷のピークの裾野が指令されたら、可変トレーニングを実行
+        if(increaseOfToraueWhenPeak*rangeOfTorqueChange){ 
+          
+          if (fabsf(positionModified-positionWhenPeak)<rangeOfTorqueChange){
+            
+            torqueSending += increaseOfToraueWhenPeak - fabsf(positionModified-positionWhenPeak) /rangeOfTorqueChange * increaseOfToraueWhenPeak;
+          }
+        }
+
+        can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);
+      }
       
     // 速度指令モードのとき
     } else {

@@ -17,8 +17,11 @@
 /// @param[out] pSpeed 速度指令値を格納する変数へのポインタ
 /// @param[out] pIncreaseOfToraueForEccentricMotion エキセン動作時のトルク増加量を格納する変数へのポインタ
 /// @param[out] pMaxSpeedWhileConcentricMotion アイソキネティックトレーニング時の回転スピードを格納する変数へのポインタ
+/// @param[out] pIncreaseOfToraueWhenPeak increaseOfToraueWhenPeakへのポインタ
+/// @param[out] pPositionWhenPeak positionWhenPeakへのポインタ
+/// @param[out] pRangeOfTorqueChange rangeOfTorqueChangeへのポインタ
 /// @return 0:コマンドは来ていない, 1: 有効なコマンドが送られてきた
-int serial_getIncomingCommand(bool* pPower, bool* pControl, bool* pMode, float* pTorque, float* pSpeed, float* pIncreaseOfToraueForEccentricMotion, float* pMaxSpeedWhileConcentricMotion) {
+int serial_getIncomingCommand(bool* pPower, bool* pControl, bool* pMode, float* pTorque, float* pSpeed, float* pIncreaseOfToraueForEccentricMotion, float* pMaxSpeedWhileConcentricMotion, float* pIncreaseOfToraueWhenPeak, float* pPositionWhenPeak, float* pRangeOfTorqueChange) {
   static char buf[SERIAL_BUFSIZE] = "";
   static int i = 0;
   static char bufBT[SERIAL_BUFSIZE] = "";
@@ -33,7 +36,7 @@ int serial_getIncomingCommand(bool* pPower, bool* pControl, bool* pMode, float* 
     if (i >= SERIAL_BUFSIZE) i = 0;  // if the index exceeds the length of buffer, reset the index to zero
 
     if (c == ')') {                  // if a command transmission has finished, try to decode it
-      if (decodeCommand(buf, pPower, pControl, pMode, pTorque, pSpeed, pIncreaseOfToraueForEccentricMotion, pMaxSpeedWhileConcentricMotion) > 0) retval = 1;
+      if (decodeCommand(buf, pPower, pControl, pMode, pTorque, pSpeed, pIncreaseOfToraueForEccentricMotion, pMaxSpeedWhileConcentricMotion, pIncreaseOfToraueWhenPeak, pPositionWhenPeak, pRangeOfTorqueChange) > 0) retval = 1;
     }
   }
 
@@ -48,7 +51,7 @@ int serial_getIncomingCommand(bool* pPower, bool* pControl, bool* pMode, float* 
       if (iBT >= SERIAL_BUFSIZE) iBT = 0;  // if the index exceeds the length of buffer, reset the index to zero
 
       if (c == ')') {                     // if a command transmission has finished, try to decode it
-        if (decodeCommand(bufBT, pPower, pControl, pMode, pTorque, pSpeed, pIncreaseOfToraueForEccentricMotion, pMaxSpeedWhileConcentricMotion) > 0) retval = 1;
+        if (decodeCommand(bufBT, pPower, pControl, pMode, pTorque, pSpeed, pIncreaseOfToraueForEccentricMotion, pMaxSpeedWhileConcentricMotion, pIncreaseOfToraueWhenPeak, pPositionWhenPeak, pRangeOfTorqueChange) > 0) retval = 1;
     }
   }
   #endif
@@ -66,7 +69,7 @@ int serial_getIncomingCommand(bool* pPower, bool* pControl, bool* pMode, float* 
 /// @param[out] pSpeed 速度指令値を格納する変数へのポインタ
 /// @param[out] pMaxSpeedWhileConcentricMotion アイソキネティックトレーニング時の回転スピードを格納する変数へのポインタ
 /// @retval コマンドが無効な場合は0を、正常に解釈できた場合はコマンドの種類('p','m','t','s')を返す
-int decodeCommand(const char* command, bool* pPower, bool* pControl, bool* pMode, float* pTorque, float* pSpeed, float* pIncreaseOfToraueForEccentricMotion, float* pMaxSpeedWhileConcentricMotion) {
+int decodeCommand(const char* command, bool* pPower, bool* pControl, bool* pMode, float* pTorque, float* pSpeed, float* pIncreaseOfToraueForEccentricMotion, float* pMaxSpeedWhileConcentricMotion, float* pIncreaseOfToraueWhenPeak, float* pPositionWhenPeak, float* pRangeOfTorqueChange) {
   int i = 0;
   if (command[0] == '(') {                // if the command starts form '(', it may be a valid command
     while (command[i] != ')') {           // find ')' which indicates the end of the command. if not found, invalid command
@@ -114,6 +117,15 @@ int decodeCommand(const char* command, bool* pPower, bool* pControl, bool* pMode
         break;
       case 'i':
         *pMaxSpeedWhileConcentricMotion = value;
+        break;
+      case 'a':
+        *pIncreaseOfToraueWhenPeak=value;
+        break;
+      case 'b':
+        *pPositionWhenPeak=value + 191*numberOfTimesYouCrossedOverFromPmaxToPmin;
+        break;
+      case 'c':
+        *pRangeOfTorqueChange=value;
         break;
       default:
         return 0;
