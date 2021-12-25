@@ -1,0 +1,338 @@
+rque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:06:54.717 -> handSwitch = 1
+20:06:54.754 -> the voltage of converter = 0.355298
+20:06:54.789 -> {"torque_recieved":2.984615, "speed_recieved":-0.007326, "position_recieved":-0.296216}
+20:06:54.856 -> increaseOfToraueForEccentricMotion = 0.000000
+20:06:54.930 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:06:54.968 -> positionModified = -0.296216
+20:06:55.005 -> fabsf(positionModified-positionWhenPeak) = 0.296216
+20:06:55.076 -> increaseOfToraueWhenPeak = 0.000000
+20:06:55.109 -> positionWhenPeak = 0.000000
+20:06:55.143 -> rangeOfTorqueChange = 0.000000
+20:06:55.143 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:06:55.253 -> handSwitch = 1
+20:06:55.253 -> the voltage of converter = 0.000000
+20:06:55.289 -> {"torque_recieved":2.984615, "speed_recieved":-0.080585, "position_recieved":-0.296597}
+20:06:55.364 -> increaseOfToraueForEccentricMotion = 0.000000
+20:06:55.431 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:06:55.469 -> positionModified = -0.296597
+20:06:55.503 -> fabsf(positionModified-positionWhenPeak) = 0.296597
+20:06:55.576 -> increaseOfToraueWhenPeak = 0.000000
+20:06:55.610 -> positionWhenPeak = 0.000000
+20:06:55.643 -> rangeOfTorqueChange = 0.000000
+20:06:55.678 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:06:55.748 -> handSwitch = 1
+20:06:55.748 -> the voltage of converter = 0.000000
+20:06:55.783 -> {"torque_recieved":2.993406, "speed_recieved":0.007326, "position_recieved":-0.296597}
+20:06:55.888 -> increaseOfToraueForEccentricMotion = 0.000000
+20:06:55.926 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:06:55.996 -> positionModified = -0.296597
+20:06:56.031 -> fabsf(positionModified-positionWhenPeak) = 0.296597
+20:06:56.067 -> increaseOfToraueWhenPeak = 0.000000
+20:06:56.104 -> positionWhenPeak = 0.000000
+20:06:56.141 -> rangeOfTorqueChange = 0.000000
+20:06:56.174 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:06:56.243 -> handSwitch = 1
+20:06:56.243 -> the voltage of converter = 0.812109
+20:06:56.315 -> {"torque_recieved":2.984615, "speed_recieved":0.065933, "position_recieved":-0.296597}
+20:06:56.387 -> increaseOfToraueForEccentricMotion = 0.000000
+20:06:56.424 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:06:56.498 -> positionModified = -0.296597
+20:06:56.536 -> fabsf(positionModified-positionWhenPeak) = 0.296597
+20:06:56.572 -> increaseOfToraueWhenPeak = 0.000000
+20:06:56.606 -> positionWhenPeak = 0.000000
+20:06:56.643 -> rangeOfTorqueChange = 0.000000
+20:06:56.679 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:06:56.749 -> handSwitch = 1
+20:06:56.749 -> the voltage of converter = 0.000000
+20:06:56.787 -> {"torque_recieved":3.046154, "speed_recieved":-0.886446, "position_recieved":-0.428206}
+20:06:56.894 -> increaseOfToraueForEccentricMotion = 0.000000
+20:06:56.930 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:06:57.000 -> positionModified = -0.428206
+20:06:57.037 -> fabsf(positionModified-positionWhenPeak) = 0.428206
+20:06:57.074 -> increaseOfToraueWhenPeak = 0.000000
+20:06:57.112 -> positionWhenPeak = 0.000000
+20:06:57.145 -> rangeOfTorqueChange = 0.000000
+20:06:57.179 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:06:57.252 -> handSwitch = 1
+20:06:57.289 -> the voltage of converter = 0.000000
+20:06:57.325 -> {"torque_recieved":3.169231, "speed_recieved":-2.893772, "position_recieved":-1.799611}
+20:06:57.394 -> increaseOfToraueForEccentricMotion = 0.000000
+20:06:57.432 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:06:57.502 -> positionModified = -1.799611
+20:06:57.539 -> fabsf(positionModified-positionWhenPeak) = 1.799611
+20:06:57.577 -> increaseOfToraueWhenPeak = 0.000000
+20:06:57.614 -> positionWhenPeak = 0.000000
+20:06:57.648 -> rangeOfTorqueChange = 0.000000
+20:06:57.683 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:06:57.756 -> handSwitch = 1
+20:06:57.756 -> the voltage of converter = 0.000000
+20:06:57.794 -> {"torque_recieved":2.984615, "speed_recieved":-4.652014, "position_recieved":-4.924659}
+20:06:57.901 -> increaseOfToraueForEccentricMotion = 0.000000
+20:06:57.939 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:06:58.013 -> positionModified = -4.924659
+20:06:58.050 -> fabsf(positionModified-positionWhenPeak) = 4.924659
+20:06:58.088 -> increaseOfToraueWhenPeak = 0.000000
+20:06:58.125 -> positionWhenPeak = 0.000000
+20:06:58.158 -> rangeOfTorqueChange = 0.000000
+20:06:58.192 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:06:58.263 -> handSwitch = 1
+20:06:58.263 -> the voltage of converter = 0.812109
+20:06:58.331 -> {"torque_recieved":2.923077, "speed_recieved":-4.725275, "position_recieved":-8.698977}
+20:06:58.398 -> increaseOfToraueForEccentricMotion = 0.000000
+20:06:58.472 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:06:58.510 -> positionModified = -8.698977
+20:06:58.546 -> fabsf(positionModified-positionWhenPeak) = 8.698977
+20:06:58.584 -> increaseOfToraueWhenPeak = 0.000000
+20:06:58.619 -> positionWhenPeak = 0.000000
+20:06:58.656 -> rangeOfTorqueChange = 0.000000
+20:06:58.692 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:06:58.759 -> handSwitch = 1
+20:06:58.797 -> the voltage of converter = 0.000000
+20:06:58.830 -> {"torque_recieved":2.852747, "speed_recieved":-1.868132, "position_recieved":-11.254101}
+20:06:58.902 -> increaseOfToraueForEccentricMotion = 0.000000
+20:06:58.975 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:06:59.011 -> positionModified = -11.254101
+20:06:59.046 -> fabsf(positionModified-positionWhenPeak) = 11.254101
+20:06:59.118 -> increaseOfToraueWhenPeak = 0.000000
+20:06:59.155 -> positionWhenPeak = 0.000000
+20:06:59.155 -> rangeOfTorqueChange = 0.000000
+20:06:59.193 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:06:59.259 -> handSwitch = 1
+20:06:59.295 -> the voltage of converter = 0.000000
+20:06:59.330 -> {"torque_recieved":3.010988, "speed_recieved":-0.974360, "position_recieved":-11.895361}
+20:06:59.433 -> increaseOfToraueForEccentricMotion = 0.000000
+20:06:59.471 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:06:59.542 -> positionModified = -11.895361
+20:06:59.542 -> fabsf(positionModified-positionWhenPeak) = 11.895361
+20:06:59.615 -> increaseOfToraueWhenPeak = 0.000000
+20:06:59.651 -> positionWhenPeak = 0.000000
+20:06:59.684 -> rangeOfTorqueChange = 0.000000
+20:06:59.717 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:06:59.790 -> handSwitch = 1
+20:06:59.790 -> the voltage of converter = 0.000000
+20:06:59.825 -> {"torque_recieved":3.019781, "speed_recieved":-0.915751, "position_recieved":12.364195}
+20:06:59.930 -> increaseOfToraueForEccentricMotion = 0.000000
+20:06:59.966 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:00.040 -> positionModified = 12.364195
+20:07:00.077 -> fabsf(positionModified-positionWhenPeak) = 12.364195
+20:07:00.111 -> increaseOfToraueWhenPeak = 0.000000
+20:07:00.148 -> positionWhenPeak = 0.000000
+20:07:00.185 -> rangeOfTorqueChange = 0.000000
+20:07:00.222 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:00.295 -> handSwitch = 1
+20:07:00.295 -> the voltage of converter = 0.000000
+20:07:00.333 -> {"torque_recieved":2.993406, "speed_recieved":0.021978, "position_recieved":12.029259}
+20:07:00.440 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:00.477 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:00.551 -> positionModified = 12.029259
+20:07:00.551 -> fabsf(positionModified-positionWhenPeak) = 12.029259
+20:07:00.624 -> increaseOfToraueWhenPeak = 0.000000
+20:07:00.657 -> positionWhenPeak = 0.000000
+20:07:00.692 -> rangeOfTorqueChange = 0.000000
+20:07:00.728 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:00.796 -> handSwitch = 1
+20:07:00.834 -> the voltage of converter = 0.406055
+20:07:00.834 -> {"torque_recieved":2.993406, "speed_recieved":0.065933, "position_recieved":12.029259}
+20:07:00.946 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:00.984 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:01.059 -> positionModified = 12.029259
+20:07:01.059 -> fabsf(positionModified-positionWhenPeak) = 12.029259
+20:07:01.133 -> increaseOfToraueWhenPeak = 0.000000
+20:07:01.170 -> positionWhenPeak = 0.000000
+20:07:01.208 -> rangeOfTorqueChange = 0.000000
+20:07:01.246 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:01.318 -> handSwitch = 1
+20:07:01.318 -> the voltage of converter = 0.422974
+20:07:01.355 -> {"torque_recieved":2.993406, "speed_recieved":0.007326, "position_recieved":12.029259}
+20:07:01.459 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:01.496 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:01.567 -> positionModified = 12.029259
+20:07:01.567 -> fabsf(positionModified-positionWhenPeak) = 12.029259
+20:07:01.637 -> increaseOfToraueWhenPeak = 0.000000
+20:07:01.674 -> positionWhenPeak = 0.000000
+20:07:01.709 -> rangeOfTorqueChange = 0.000000
+20:07:01.742 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:01.816 -> handSwitch = 1
+20:07:01.816 -> the voltage of converter = 0.000000
+20:07:01.852 -> {"torque_recieved":2.993406, "speed_recieved":-0.036631, "position_recieved":12.029259}
+20:07:01.959 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:01.997 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:02.072 -> positionModified = 12.029259
+20:07:02.072 -> fabsf(positionModified-positionWhenPeak) = 12.029259
+20:07:02.147 -> increaseOfToraueWhenPeak = 0.000000
+20:07:02.180 -> positionWhenPeak = 0.000000
+20:07:02.213 -> rangeOfTorqueChange = 0.000000
+20:07:02.250 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:02.320 -> handSwitch = 1
+20:07:02.320 -> the voltage of converter = 0.000000
+20:07:02.357 -> {"torque_recieved":3.002197, "speed_recieved":-0.036631, "position_recieved":12.029259}
+20:07:02.461 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:02.499 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:02.565 -> positionModified = 12.029259
+20:07:02.602 -> fabsf(positionModified-positionWhenPeak) = 12.029259
+20:07:02.639 -> increaseOfToraueWhenPeak = 0.000000
+20:07:02.677 -> positionWhenPeak = 0.000000
+20:07:02.712 -> rangeOfTorqueChange = 0.000000
+20:07:02.745 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:02.819 -> handSwitch = 1
+20:07:02.819 -> the voltage of converter = 0.609082
+20:07:02.891 -> {"torque_recieved":2.993406, "speed_recieved":0.007326, "position_recieved":12.029259}
+20:07:02.962 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:03.000 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:03.072 -> positionModified = 12.029259
+20:07:03.107 -> fabsf(positionModified-positionWhenPeak) = 12.029259
+20:07:03.142 -> increaseOfToraueWhenPeak = 0.000000
+20:07:03.177 -> positionWhenPeak = 0.000000
+20:07:03.213 -> rangeOfTorqueChange = 0.000000
+20:07:03.247 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:03.320 -> handSwitch = 1
+20:07:03.358 -> the voltage of converter = 0.000000
+20:07:03.394 -> {"torque_recieved":2.984615, "speed_recieved":-0.124542, "position_recieved":12.029259}
+20:07:03.466 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:03.503 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:03.576 -> positionModified = 12.029259
+20:07:03.613 -> fabsf(positionModified-positionWhenPeak) = 12.029259
+20:07:03.650 -> increaseOfToraueWhenPeak = 0.000000
+20:07:03.684 -> positionWhenPeak = 0.000000
+20:07:03.717 -> rangeOfTorqueChange = 0.000000
+20:07:03.755 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:03.823 -> handSwitch = 1
+20:07:03.858 -> the voltage of converter = 0.000000
+20:07:03.896 -> {"torque_recieved":2.993406, "speed_recieved":-0.007326, "position_recieved":12.029259}
+20:07:03.970 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:04.007 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:04.078 -> positionModified = 12.029259
+20:07:04.113 -> fabsf(positionModified-positionWhenPeak) = 12.029259
+20:07:04.151 -> increaseOfToraueWhenPeak = 0.000000
+20:07:04.185 -> positionWhenPeak = 0.000000
+20:07:04.218 -> rangeOfTorqueChange = 0.000000
+20:07:04.255 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:04.326 -> handSwitch = 1
+20:07:04.361 -> the voltage of converter = 1.082813
+20:07:04.398 -> {"torque_recieved":2.914286, "speed_recieved":0.065933, "position_recieved":12.031548}
+20:07:04.472 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:04.541 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:04.578 -> positionModified = 12.031548
+20:07:04.615 -> fabsf(positionModified-positionWhenPeak) = 12.031548
+20:07:04.653 -> increaseOfToraueWhenPeak = 0.000000
+20:07:04.691 -> positionWhenPeak = 0.000000
+20:07:04.725 -> rangeOfTorqueChange = 0.000000
+20:07:04.760 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:04.830 -> handSwitch = 1
+20:07:04.866 -> the voltage of converter = 0.000000
+20:07:04.900 -> {"torque_recieved":3.081318, "speed_recieved":5.824177, "position_recieved":-10.466354}
+20:07:05.006 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:05.040 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:05.075 -> positionModified = -10.466354
+20:07:05.112 -> fabsf(positionModified-positionWhenPeak) = 10.466354
+20:07:05.186 -> increaseOfToraueWhenPeak = 0.000000
+20:07:05.224 -> positionWhenPeak = 0.000000
+20:07:05.261 -> rangeOfTorqueChange = 0.000000
+20:07:05.261 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:05.336 -> handSwitch = 1
+20:07:05.374 -> the voltage of converter = 0.000000
+20:07:05.411 -> {"torque_recieved":3.134066, "speed_recieved":5.985348, "position_recieved":-5.584230}
+20:07:05.480 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:05.552 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:05.586 -> positionModified = -5.584230
+20:07:05.624 -> fabsf(positionModified-positionWhenPeak) = 5.584230
+20:07:05.698 -> increaseOfToraueWhenPeak = 0.000000
+20:07:05.732 -> positionWhenPeak = 0.000000
+20:07:05.732 -> rangeOfTorqueChange = 0.000000
+20:07:05.765 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:05.874 -> handSwitch = 1
+20:07:05.874 -> the voltage of converter = 1.082813
+20:07:05.912 -> {"torque_recieved":3.204395, "speed_recieved":3.802197, "position_recieved":-1.083581}
+20:07:05.981 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:06.053 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:06.090 -> positionModified = -1.083581
+20:07:06.126 -> fabsf(positionModified-positionWhenPeak) = 1.083581
+20:07:06.197 -> increaseOfToraueWhenPeak = 0.000000
+20:07:06.233 -> positionWhenPeak = 0.000000
+20:07:06.233 -> rangeOfTorqueChange = 0.000000
+20:07:06.269 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:06.340 -> handSwitch = 1
+20:07:06.376 -> the voltage of converter = 0.000000
+20:07:06.413 -> {"torque_recieved":2.984615, "speed_recieved":0.095238, "position_recieved":-0.257687}
+20:07:06.488 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:06.564 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:06.601 -> positionModified = -0.257687
+20:07:06.638 -> fabsf(positionModified-positionWhenPeak) = 0.257687
+20:07:06.674 -> increaseOfToraueWhenPeak = 0.000000
+20:07:06.712 -> positionWhenPeak = 0.000000
+20:07:06.749 -> rangeOfTorqueChange = 0.000000
+20:07:06.786 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:06.861 -> handSwitch = 1
+20:07:06.899 -> the voltage of converter = 0.000000
+20:07:06.936 -> {"torque_recieved":2.984615, "speed_recieved":0.065933, "position_recieved":-0.257687}
+20:07:07.010 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:07.047 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:07.119 -> positionModified = -0.257687
+20:07:07.157 -> fabsf(positionModified-positionWhenPeak) = 0.257687
+20:07:07.194 -> increaseOfToraueWhenPeak = 0.000000
+20:07:07.228 -> positionWhenPeak = 0.000000
+20:07:07.264 -> rangeOfTorqueChange = 0.000000
+20:07:07.302 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:07.373 -> handSwitch = 1
+20:07:07.373 -> the voltage of converter = 0.000000
+20:07:07.409 -> {"torque_recieved":3.002197, "speed_recieved":0.065933, "position_recieved":-0.257687}
+20:07:07.516 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:07.554 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:07.624 -> positionModified = -0.257687
+20:07:07.661 -> fabsf(positionModified-positionWhenPeak) = 0.257687
+20:07:07.695 -> increaseOfToraueWhenPeak = 0.000000
+20:07:07.728 -> positionWhenPeak = 0.000000
+20:07:07.762 -> rangeOfTorqueChange = 0.000000
+20:07:07.800 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:07.870 -> handSwitch = 1
+20:07:07.870 -> the voltage of converter = 0.812109
+20:07:07.907 -> {"torque_recieved":2.984615, "speed_recieved":0.095238, "position_recieved":-0.257687}
+20:07:08.013 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:08.049 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:08.124 -> positionModified = -0.257687
+20:07:08.157 -> fabsf(positionModified-positionWhenPeak) = 0.257687
+20:07:08.194 -> increaseOfToraueWhenPeak = 0.000000
+20:07:08.227 -> positionWhenPeak = 0.000000
+20:07:08.261 -> rangeOfTorqueChange = 0.000000
+20:07:08.295 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:08.366 -> handSwitch = 1
+20:07:08.399 -> the voltage of converter = 0.270703
+20:07:08.433 -> {"torque_recieved":2.993406, "speed_recieved":-0.021978, "position_recieved":-0.257687}
+20:07:08.507 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:08.579 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:08.613 -> positionModified = -0.257687
+20:07:08.646 -> fabsf(positionModified-positionWhenPeak) = 0.257687
+20:07:08.717 -> increaseOfToraueWhenPeak = 0.000000
+20:07:08.754 -> positionWhenPeak = 0.000000
+20:07:08.792 -> rangeOfTorqueChange = 0.000000
+20:07:08.792 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:08.866 -> handSwitch = 1
+20:07:08.902 -> the voltage of converter = 0.000000
+20:07:08.936 -> {"torque_recieved":2.984615, "speed_recieved":-0.080585, "position_recieved":-0.257687}
+20:07:09.011 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:09.083 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:09.117 -> positionModified = -0.257687
+20:07:09.154 -> fabsf(positionModified-positionWhenPeak) = 0.257687
+20:07:09.229 -> increaseOfToraueWhenPeak = 0.000000
+20:07:09.265 -> positionWhenPeak = 0.000000
+20:07:09.265 -> rangeOfTorqueChange = 0.000000
+20:07:09.299 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:09.373 -> handSwitch = 1
+20:07:09.410 -> the voltage of converter = 0.000000
+20:07:09.445 -> {"torque_recieved":2.984615, "speed_recieved":0.124542, "position_recieved":-0.257305}
+20:07:09.518 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:09.592 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:09.626 -> positionModified = -0.257305
+20:07:09.663 -> fabsf(positionModified-positionWhenPeak) = 0.257305
+20:07:09.698 -> increaseOfToraueWhenPeak = 0.000000
+20:07:09.768 -> positionWhenPeak = 0.000000
+20:07:09.768 -> rangeOfTorqueChange = 0.000000
+20:07:09.805 -> {"torque_ref":3.000000, "speed_ref":0.000000, "position_ref":0.000000}
+20:07:09.880 -> handSwitch = 1
+20:07:09.918 -> the voltage of converter = 0.761353
+20:07:09.954 -> {"torque_recieved":2.975824, "speed_recieved":-0.021978, "position_recieved":-0.257687}
+20:07:10.027 -> increaseOfToraueForEccentricMotion = 0.000000
+20:07:10.095 -> numberOfTimesYouCrossedOverFromPmaxToPmin = 0.000000
+20:07:10.132 -> positionModified = -0.257687
+20:07:10.168 -> fabsf(positionMo

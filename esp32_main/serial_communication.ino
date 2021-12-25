@@ -122,7 +122,7 @@ int decodeCommand(const char* command, bool* pPower, bool* pControl, bool* pMode
         *pIncreaseOfToraueWhenPeak=value;
         break;
       case 'b':
-        *pPositionWhenPeak=value + 191*numberOfTimesYouCrossedOverFromPmaxToPmin;
+        *pPositionWhenPeak=value;
         break;
       case 'c':
         *pRangeOfTorqueChange=value;

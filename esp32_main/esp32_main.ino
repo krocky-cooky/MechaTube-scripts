@@ -54,13 +54,13 @@ volatile float previousPositionRecieved=200.0; //直前の位置の受信デー�
 volatile float numberOfTimesYouCrossedOverFromPmaxToPmin=0.0; //位置=95.5から位置=-95.5に移動した回数。逆向きに跨いだら回数を-1する
 
 //修正された位置
-//position=95.5とposition=-95.5の間で位置の値が不連続にならないようにする
+//position=P_MAXとposition=-P_MINの間で位置の値が不連続にならないようにする
 //例えば、position=95.5からposition=-95.5にまたぐ時に、position=-80ではなくposition=111にする
 volatile float positionModified;
 
 //PrimeFittnessのような可変抵抗トレーニングの実装のための変数
 float increaseOfToraueWhenPeak = 0.0;//負荷がピーク時のトルクがベーストルクよりどれだけ高いか
-float positionWhenPeak = 0.0;//負荷のピーク位置
+float positionWhenPeak = 0.0;//負荷のピーク位置。修正後の位置データで与える
 float rangeOfTorqueChange= 0.0;//ピーク位置に対して+-いくつの位置まで行けばベーストルクになるか。言い換えれば、負荷のピークの裾野の大きさ
 
 // CAN受信割込みとmainloopの双方からアクセスする変数の排他処理
@@ -114,11 +114,11 @@ void loop() {
   //ハンドスイッチを取った
   handSwitch = true;
   
-  Serial.printf("handSwitch = %d\n", handSwitch);
+  //Serial.printf("handSwitch = %d\n", handSwitch);
 
   //コンバータの電圧を表示
   float voltageOfConverter = analogRead(34) * 3.3 * 21 / 4096; //コンバータの電圧の値
-  Serial.printf("the voltage of converter = %f\n", voltageOfConverter);
+  //Serial.printf("the voltage of converter = %f\n", voltageOfConverter);
 
 
   //can通信の受信値を表示
@@ -174,7 +174,7 @@ void loop() {
       if (handSwitch) {     // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
 
         // エキセン動作時は指示トルクを大きくする
-        Serial.printf("increaseOfToraueForEccentricMotion = %f\n", increaseOfToraueForEccentricMotion);
+        //Serial.printf("increaseOfToraueForEccentricMotion = %f\n", increaseOfToraueForEccentricMotion);
         
         if (speedReceived > THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION){
           torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand+increaseOfToraueForEccentricMotion, (float)dtMicros/1e6, TAU_WHILE_NON_ECCENTRIC_MOTION);
@@ -229,24 +229,26 @@ void loop() {
       }
 */
     //位置を修正
-    //position=95.5とposition=-95.5の間で位置の値が不連続にならないようにする
+    //position=P_MAXとposition=-P_MINの間で位置の値が不連続にならないようにする
     //例えば、position=95.5からposition=-95.5にまたぐ時に、position=-80ではなくposition=111にする
-    if (previousPositionRecieved!=200 && previousPositionRecieved*positionReceived<-2500.0){
-      if(positionReceived<0){
-        numberOfTimesYouCrossedOverFromPmaxToPmin+=1;
-      }else if(positionReceived>0){
+    if (previousPositionRecieved!=200 && previousPositionRecieved*positionReceived<-2.0){
+      if(positionReceived>0 && speedReceived<0){
         numberOfTimesYouCrossedOverFromPmaxToPmin-=1;
+      }else if(positionReceived<0 && speedReceived>0){
+        numberOfTimesYouCrossedOverFromPmaxToPmin+=1;
       }
     }
     previousPositionRecieved = positionReceived;
-    positionModified = positionReceived + 191*numberOfTimesYouCrossedOverFromPmaxToPmin;
-
-            Serial.printf("numberOfTimesYouCrossedOverFromPmaxToPmin = %f\n",numberOfTimesYouCrossedOverFromPmaxToPmin);
+    positionModified = positionReceived + (P_MAX-P_MIN)*numberOfTimesYouCrossedOverFromPmaxToPmin;
+    Serial.printf("positionModified = %f\n",positionModified);
+    /*
+        Serial.printf("numberOfTimesYouCrossedOverFromPmaxToPmin = %f\n",numberOfTimesYouCrossedOverFromPmaxToPmin);
         Serial.printf("positionModified = %f\n",positionModified);
         Serial.printf("fabsf(positionModified-positionWhenPeak) = %f\n",fabsf(positionModified-positionWhenPeak));
         Serial.printf("increaseOfToraueWhenPeak = %f\n", increaseOfToraueWhenPeak);
         Serial.printf("positionWhenPeak = %f\n", positionWhenPeak);
         Serial.printf("rangeOfTorqueChange = %f\n", rangeOfTorqueChange);
+    */
     //PrimeFittnessのような可変抵抗トレーニングの実装
       if (torqueReceived > MAX_TORQUE){
         can_sendCommand(0.0, 0.0, 0.0, 0.0, MAX_TORQUE);
