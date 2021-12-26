@@ -12,6 +12,8 @@
 #define KD 1.0
 #define TAU_WHILE_ECCENTRIC_MOTION 0.5     //エキセン動作時の、一時遅れ系によるトルク指令の、時定数
 #define TAU_WHILE_NON_ECCENTRIC_MOTION 1.0 //エキセン動作以外の時の、一時遅れ系によるトルク指令の、時定数
+#define P_MIN -12.5
+#define P_MAX 12.5
 
 //閾値等
 #define FORCE_THRESHOLD_OF_HANDSWICH 10.0                             //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
@@ -48,13 +50,13 @@ unsigned long timeControlOn = 0; // モータ制御モードに入った時刻 [
 
 // 直近にCANで送受信したデータを記憶しておく変数(表示に利用)
 float positionSent, speedSent, kpSent, kdSent, torqueSent;      // 直近のCAN送信データを記録しておく
-volatile float positionRecieved, speedRecieved, torqueRecieved; // 直近のCAN受信データを記録しておく
-volatile uint8_t canRecievedMsg[6];                             // 直近のCAN受信データそのものを記録しておく
-volatile float previousPositionRecieved = 0.0;                  //直前に受信した位置のデータ
-volatile float numberOfTimesYouCrossedOverFromPmaxToPmin = 0.0; //位置=P_MAXから位置が増加して位置=P_MINに移動した回数。逆向きで位置=P_MIMから位置=P_MAXに移動したら-1する。例えば、P_MAX=12.5, P_MIN=-12.5の時、positionRecieved=10から、回転位置が5増えると、positionRecievedは15ではなく-10になる。
+volatile float positionReceived, speedReceived, torqueReceived; // 直近のCAN受信データを記録しておく
+volatile uint8_t canReceivedMsg[6];                             // 直近のCAN受信データそのものを記録しておく
+volatile float previousPositionReceived = 0.0;                  //直前に受信した位置のデータ
+volatile float numberOfTimesYouCrossedOverFromPmaxToPmin = 0.0; //位置=P_MAXから位置が増加して位置=P_MINに移動した回数。逆向きで位置=P_MIMから位置=P_MAXに移動したら-1する。例えば、P_MAX=12.5, P_MIN=-12.5の時、positionReceived=10から、回転位置が5増えると、positionReceivedは15ではなく-10になる。
 
 //初期位置からの回転角
-//例えば、P_MAX=12.5, P_MIN=-12.5の時、positionRecieved=10から、回転位置が5増えると、positionRecievedは15ではなく-10になる
+//例えば、P_MAX=12.5, P_MIN=-12.5の時、positionReceived=10から、回転位置が5増えると、positionReceivedは15ではなく-10になる
 //それだと不便なので、下の変数には、累計でどれだけ位置変化したかを記録。上の例では、position=15を記録する事になる
 volatile float rotationAngleFromInitialPosition;
 
@@ -91,8 +93,8 @@ void setup()
   *pREG_IER &= ~(uint8_t)0x10;
 
   // 直前に受信した位置のデータを初期化
-  unpackReply(canRecievedMsg, &positionRecieved, &speedRecieved, &torqueRecieved);
-  previousPositionRecieved = positionRecieved;
+  unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
+  previousPositionReceived = positionReceived;
 
   Serial.println("[setup] setup comleted");
 }
@@ -132,26 +134,26 @@ void loop()
   // Serial.printf("the voltage of converter = %f\n", voltageOfConverter);
 
   // can通信の受信値を表示
-  unpackReply(canRecievedMsg, &positionRecieved, &speedRecieved, &torqueRecieved);
-  Serial.printf("{\"torque_recieved\":%f, \"speed_recieved\":%f, \"position_recieved\":%f}\n", torqueRecieved, speedRecieved, positionRecieved);
+  unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
+  Serial.printf("{\"torque_received\":%f, \"speed_received\":%f, \"position_received\":%f}\n", torqueReceived, speedReceived, positionReceived);
 
   //初期位置からの回転角を記録
   //位置=P_MAXから位置が増加して位置=P_MINに移動した回数をカウントする
   //速度が正なのに、位置の符号が正から負に変化したら、位置=P_MAXから位置が増加して位置=P_MINに移動していると判断
   //ただし、位置=0.0前後で小さく動いている時は、速度や位置の符号が不安定になるので、除外する
   //位置の符号が変化し、かつ位置の変化量が一定以上であるかどうか
-  if (previousPositionRecieved * positionRecieved < 0.0 && fabs(positionRecieved - previousPositionRecieved) > 3.0)
+  if (previousPositionReceived * positionReceived < -2.0)
   {
-    if (positionRecieved > 0 && speedRecieved < 0)
+    if (positionReceived > 0 && speedReceived < 0)
     {
       numberOfTimesYouCrossedOverFromPmaxToPmin -= 1;
     }
-    else if (positionRecieved < 0 && speedRecieved > 0)
+    else if (positionReceived < 0 && speedReceived > 0)
     {
       numberOfTimesYouCrossedOverFromPmaxToPmin += 1;
     }
   }
-  rotationAngleFromInitialPosition = positionRecieved + (P_MAX - P_MIN) * numberOfTimesYouCrossedOverFromPmaxToPmin;
+  rotationAngleFromInitialPosition = positionReceived + (P_MAX - P_MIN) * numberOfTimesYouCrossedOverFromPmaxToPmin;
   Serial.printf("rotationAngleFromInitialPosition = %f\n", rotationAngleFromInitialPosition);
 
   // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
@@ -166,7 +168,7 @@ void loop()
         // エキセン動作時(モータの回転速度は正)は指示トルクを大きくする
         // Serial.printf("increaseOfToraueForEccentricMotion = %f\n", increaseOfToraueForEccentricMotion);
 
-        if (speedRecieved > THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION)
+        if (speedReceived > THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION)
         {
           torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand + increaseOfToraueForEccentricMotion, (float)dtMicros / 1e6, TAU_WHILE_NON_ECCENTRIC_MOTION);
         }
@@ -189,11 +191,10 @@ void loop()
       speedSending = 0.0;           // 速度送信値は不要なので0とする
       firstOrderDelay_resetSpeed(); // 速度の1次遅れ計算用変数をリセット
 
-
       // 指定条件を満たせば、PrimeFittnessのような可変抵抗トレーニングor等速度トレーニングを実行
       //どちらも実行するようなことはないようにする
       //トルク制限つき
-      if (torqueRecieved > MAX_TORQUE)
+      if (torqueReceived > MAX_TORQUE)
       {
         can_sendCommand(0.0, 0.0, 0.0, 0.0, MAX_TORQUE);
       }
@@ -213,7 +214,7 @@ void loop()
         //持ち上げるときの制限速度が1.1未満であり、かつ可変トレーニングの実行条件が満たされていなければ、等速性トレーニングにする
         else if (maxSpeedWhileConcentricMotion < 1.1 && increaseOfToraueWhenPeak * rangeOfTorqueChange == 0)
         {
-          if (speedRecieved < -maxSpeedWhileConcentricMotion)
+          if (speedReceived < -maxSpeedWhileConcentricMotion)
           {
             can_sendCommand(0.0, -maxSpeedWhileConcentricMotion, 0.0, KD, 0.0);
           }
@@ -224,51 +225,46 @@ void loop()
         }
         else
         {
-         //等速度トレーニングも可変トレーニングも実行されなければ、そのままトルクを送信
+          //等速度トレーニングも可変トレーニングも実行されなければ、そのままトルクを送信
           can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending); // 送信
         }
       }
 
       //直前の位置データを更新
-      previousPositionRecieved = positionRecieved;
-
-      can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending);
+      previousPositionReceived = positionReceived;
     }
-
     // 速度指令モードのとき
+    else
+    {
+      if (handSwitch)
+      {
+        speedSending = firstOrderDelay_speed(speedCommand, (float)dtMicros / 1e6);
+      }
+      else
+      {
+        speedSending = firstOrderDelay_speed(0.0, (float)dtMicros / 1e6);
+      }
+      torqueSending = 0.0;
+      firstOrderDelay_resetTorque();
+
+      can_sendCommand(0.0, speedSending, 0.0, KD, 0.0);
+    }
+    // モータ制御モードに入っていないとき、全ての変数を0にリセットしておく
   }
   else
   {
-    if (handSwitch)
-    {
-      speedSending = firstOrderDelay_speed(speedCommand, (float)dtMicros / 1e6);
-    }
-    else
-    {
-      speedSending = firstOrderDelay_speed(0.0, (float)dtMicros / 1e6);
-    }
     torqueSending = 0.0;
+    speedSending = 0.0;
     firstOrderDelay_resetTorque();
-
-    can_sendCommand(0.0, speedSending, 0.0, KD, 0.0);
+    firstOrderDelay_resetSpeed();
   }
 
-  // モータ制御モードに入っていないとき、全ての変数を0にリセットしておく
-}
-else
-{
-  torqueSending = 0.0;
-  speedSending = 0.0;
-  firstOrderDelay_resetTorque();
-  firstOrderDelay_resetSpeed();
-}
+  delay(100);
 
-delay(100);
-
-portENTER_CRITICAL_ISR(&onCanReceiveMux); // CAN受信割込みと共有する変数へのアクセスはこの中で行う
-// Serial.printf("{\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueRecieved, speedRecieved, positionRecieved);
-// Serial.printf("%x %x %x %x %x %x\n", canRecievedMsg[0], canRecievedMsg[1], canRecievedMsg[2], canRecievedMsg[3], canRecievedMsg[4], canRecievedMsg[5]);
-portEXIT_CRITICAL_ISR(&onCanReceiveMux); // CAN受信割込みと共有する変数へのアクセスはこの中で行う
+  portENTER_CRITICAL_ISR(&onCanReceiveMux); // CAN受信割込みと共有する変数へのアクセスはこの中で行う
+  // Serial.printf("{\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueReceived, speedReceived, positionReceived);
+  // Serial.printf("%x %x %x %x %x %x\n", canReceivedMsg[0], canReceivedMsg[1], canReceivedMsg[2], canReceivedMsg[3], canReceivedMsg[4], canReceivedMsg[5]);
+  portEXIT_CRITICAL_ISR(&onCanReceiveMux); // CAN受信割込みと共有する変数へのアクセスはこの中で行う
 }
 
 void setPower(bool command)

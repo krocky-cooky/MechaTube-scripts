@@ -29,7 +29,7 @@ int serial_getIncomingCommand(bool* pPower, bool* pControl, bool* pMode, float* 
   int retval = 0;
 
   while (Serial.available()) {
-    char c = Serial.read();          // read a recieved character
+    char c = Serial.read();          // read a received character
     if (c == '(') i = 0;             // if the character is '(' which indicates the beginnig of the message, move index to zero
     buf[i] = c;                      // add the character to the buffer
     i++;                             // move the index to the next address
@@ -44,7 +44,7 @@ int serial_getIncomingCommand(bool* pPower, bool* pControl, bool* pMode, float* 
   if (!retval) {  // if there is no data available on HardwareSerial, try to read data from Bluetooth Serial
 
     while (SerialBT.available()) {
-      char c = SerialBT.read();            // read a recieved character
+      char c = SerialBT.read();            // read a received character
       if (c == '(') i = 0;                 // if the character is '(' which indicates the beginnig of the message, move index to zero
       bufBT[i] = c;                        // add the character to the buffer
       iBT++;                               // move the index to the next address
