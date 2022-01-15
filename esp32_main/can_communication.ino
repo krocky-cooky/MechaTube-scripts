@@ -10,14 +10,10 @@
 #define DRIVER_ID 0
 
 /// data boundary ///
-//#define P_MIN -95.5
-//#define P_MAX 95.5
-
 #define P_MIN -12.5
 #define P_MAX 12.5
-
-#define V_MIN -30
-#define V_MAX 30
+#define V_MIN -46.57
+#define V_MAX 46.57
 #define T_MIN -54
 #define T_MAX 54
 #define Kp_MIN 0
