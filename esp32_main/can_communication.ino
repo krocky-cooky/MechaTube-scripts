@@ -18,8 +18,8 @@
 
 #define V_MIN -30
 #define V_MAX 30
-#define T_MIN -18
-#define T_MAX 18
+#define T_MIN -54
+#define T_MAX 54
 #define Kp_MIN 0
 #define Kp_MAX 500
 #define Kd_MIN 0
