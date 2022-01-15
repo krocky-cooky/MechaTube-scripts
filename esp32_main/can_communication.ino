@@ -10,8 +10,12 @@
 #define DRIVER_ID 0
 
 /// data boundary ///
-#define P_MIN -95.5
-#define P_MAX 95.5
+//#define P_MIN -95.5
+//#define P_MAX 95.5
+
+#define P_MIN -12.5
+#define P_MAX 12.5
+
 #define V_MIN -30
 #define V_MAX 30
 #define T_MIN -18
@@ -85,7 +89,7 @@ void can_onReceive(int packetSize) {
     // buf[i] = CAN.read();
     canReceivedMsg[i] = CAN.read();
   }
-  // unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);  // 1007 ここでCPUがcore panicする
+  //unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);  // 1007 ここでCPUがcore panicする
   
   portEXIT_CRITICAL_ISR(&onCanReceiveMux);  // mainloopと共有する変数の更新はこの中で行う
 }

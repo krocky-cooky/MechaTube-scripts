@@ -20,7 +20,27 @@ FirstOrderDelayData_t speedData = {0.0, 0.0, 0.0, 0.0};
 /// @brief トルクについて1次遅れ計算を行う
 /// @param[in] input 系への入力 [Nm]
 /// @param[in] dt 前回の入力から今回の入力までの経過時間 [s]
+/// @param[in] tau 時定数 [s]
 /// @return output 系の出力 [Nm]
+float firstOrderDelay_torque_controlling_tau(float input, float dt, float tau) {
+  torqueData.xprev = torqueData.x;
+  torqueData.yprev = torqueData.y;
+  torqueData.x = input;
+  torqueData.y = 1/(2*tau + dt) * ((2*tau - dt) * torqueData.yprev + dt * (torqueData.x + torqueData.xprev));
+
+  //トルクが指示値を超えることは許さない
+  //トルクが指示値を超えている場合は、トルクに指示値を代入する
+  //回生対策。これをしないと、エキセン動作時の大トルクが、一時遅れ系ゆえにコンセン動作時にもやや引き継がれて、コンバータがダウンする
+  if (torqueData.y > input){
+    torqueData.y = input;
+  }
+  
+  return torqueData.y;
+}
+
+
+/*
+2021/10/29以前に使っていたトルクの一時遅れ計算関数
 float firstOrderDelay_torque(float input, float dt) {
   torqueData.xprev = torqueData.x;
   torqueData.yprev = torqueData.y;
@@ -28,7 +48,7 @@ float firstOrderDelay_torque(float input, float dt) {
   torqueData.y = 1/(2*TAU + dt) * ((2*TAU - dt) * torqueData.yprev + dt * (torqueData.x + torqueData.xprev));
   return torqueData.y;
 }
-
+ */
 
 /// @brief 速度について1次遅れ計算を行う
 /// @param[in] input 系への入力 [rad/s]

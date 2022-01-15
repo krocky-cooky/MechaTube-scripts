@@ -1,0 +1,201 @@
+recieved":-1.968727}
+22:10:28.382 -> {"torque_ref":0.000000, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:28.452 -> the voltage of converter = 45.461205
+22:10:28.486 -> handSwitch = 0
+22:10:28.523 -> {"torque_recieved":-0.004396, "speed_recieved":-0.036631, "position_recieved":-1.968727}
+22:10:28.591 -> {"torque_ref":0.000000, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:28.666 -> the voltage of converter = 44.040016
+22:10:28.704 -> handSwitch = 0
+22:10:28.741 -> {"torque_recieved":0.004396, "speed_recieved":0.007326, "position_recieved":-1.968727}
+22:10:28.812 -> {"torque_ref":0.000000, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:28.885 -> the voltage of converter = 44.784447
+22:10:28.920 -> handSwitch = 0
+22:10:28.955 -> {"torque_recieved":-0.021978, "speed_recieved":-0.065933, "position_recieved":-1.968727}
+22:10:29.063 -> {"torque_ref":0.000000, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:29.134 -> the voltage of converter = 44.513744
+22:10:29.167 -> handSwitch = 0
+22:10:29.167 -> {"torque_recieved":0.004396, "speed_recieved":0.036631, "position_recieved":-1.968727}
+22:10:29.275 -> {"torque_ref":0.000000, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:29.348 -> the voltage of converter = 44.750610
+22:10:29.384 -> handSwitch = 0
+22:10:29.384 -> {"torque_recieved":0.004396, "speed_recieved":-0.080585, "position_recieved":-1.968727}
+22:10:29.489 -> {"torque_ref":0.000000, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:29.557 -> the voltage of converter = 45.190502
+22:10:29.593 -> handSwitch = 1
+22:10:29.626 -> {"torque_recieved":0.004396, "speed_recieved":0.109890, "position_recieved":-1.968727}
+22:10:29.695 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:29.764 -> {"torque_ref":0.540984, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:29.838 -> the voltage of converter = 44.243042
+22:10:29.872 -> handSwitch = 1
+22:10:29.872 -> {"torque_recieved":-0.004396, "speed_recieved":-0.080585, "position_recieved":-1.971642}
+22:10:29.978 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:30.011 -> {"torque_ref":1.577380, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:30.083 -> the voltage of converter = 44.412231
+22:10:30.120 -> handSwitch = 1
+22:10:30.154 -> {"torque_recieved":0.531868, "speed_recieved":-0.065933, "position_recieved":-1.927925}
+22:10:30.225 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:30.297 -> {"torque_ref":2.180508, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:30.370 -> the voltage of converter = 45.156666
+22:10:30.404 -> handSwitch = 1
+22:10:30.404 -> {"torque_recieved":1.569231, "speed_recieved":0.373627, "position_recieved":-0.709671}
+22:10:30.508 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:30.542 -> {"torque_ref":2.525898, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:30.613 -> the voltage of converter = 44.395313
+22:10:30.683 -> handSwitch = 1
+22:10:30.683 -> {"torque_recieved":2.316484, "speed_recieved":1.340660, "position_recieved":2.776039}
+22:10:30.788 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:30.826 -> {"torque_ref":2.637574, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:30.897 -> the voltage of converter = 44.378395
+22:10:30.932 -> handSwitch = 1
+22:10:30.970 -> {"torque_recieved":2.606594, "speed_recieved":2.527473, "position_recieved":8.613724}
+22:10:31.044 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:31.082 -> {"torque_ref":2.722663, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:31.151 -> the voltage of converter = 45.173584
+22:10:31.187 -> handSwitch = 1
+22:10:31.220 -> {"torque_recieved":2.589010, "speed_recieved":3.875458, "position_recieved":18.307266}
+22:10:31.292 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:31.363 -> {"torque_ref":2.787559, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:31.433 -> the voltage of converter = 44.378395
+22:10:31.470 -> handSwitch = 1
+22:10:31.470 -> {"torque_recieved":2.870329, "speed_recieved":6.293041, "position_recieved":34.590424}
+22:10:31.574 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:31.610 -> {"torque_ref":2.837600, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:31.681 -> the voltage of converter = 44.107689
+22:10:31.714 -> handSwitch = 1
+22:10:31.747 -> {"torque_recieved":3.186813, "speed_recieved":4.329670, "position_recieved":52.572723}
+22:10:31.850 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:31.887 -> {"torque_ref":2.875854, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:31.954 -> the voltage of converter = 44.209206
+22:10:31.991 -> handSwitch = 1
+22:10:32.024 -> {"torque_recieved":2.835165, "speed_recieved":-0.065933, "position_recieved":58.197662}
+22:10:32.092 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:32.163 -> {"torque_ref":2.928022, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:32.234 -> the voltage of converter = 48.777321
+22:10:32.270 -> handSwitch = 1
+22:10:32.270 -> {"torque_recieved":3.098902, "speed_recieved":-3.890110, "position_recieved":53.146881}
+22:10:32.375 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:32.409 -> {"torque_ref":2.958448, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:32.513 -> the voltage of converter = 53.311596
+22:10:32.548 -> handSwitch = 1
+22:10:32.548 -> {"torque_recieved":3.072527, "speed_recieved":-7.318682, "position_recieved":35.141266}
+22:10:32.654 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:32.691 -> {"torque_ref":2.976013, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:32.764 -> the voltage of converter = 56.576954
+22:10:32.801 -> handSwitch = 1
+22:10:32.801 -> {"torque_recieved":2.949451, "speed_recieved":-7.509157, "position_recieved":12.230583}
+22:10:32.908 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:32.944 -> {"torque_ref":2.986123, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:33.049 -> the voltage of converter = 51.687378
+22:10:33.084 -> handSwitch = 1
+22:10:33.084 -> {"torque_recieved":2.650549, "speed_recieved":-4.666666, "position_recieved":-8.365997}
+22:10:33.192 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:33.226 -> {"torque_ref":2.991989, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:33.296 -> the voltage of converter = 24.329443
+22:10:33.334 -> handSwitch = 1
+22:10:33.367 -> {"torque_recieved":2.975824, "speed_recieved":1.736263, "position_recieved":-11.184288}
+22:10:33.439 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:33.507 -> {"torque_ref":2.993882, "speed_ref":0.000000, "position_ref":0.000000}
+22:10:33.579 -> the voltage of converter = 2.436328
+22:10:33.617 -> handSwitch = 1
+22:10:33.617 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:33.723 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:33.757 -> the voltage of converter = 1.996436
+22:10:33.791 -> handSwitch = 1
+22:10:33.828 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:33.895 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:33.966 -> the voltage of converter = 1.658057
+22:10:33.999 -> handSwitch = 1
+22:10:33.999 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:34.105 -> increaseOfToraueForEccentricMotion = 0.000000
+22:10:34.139 -> the voltage of converter = 0.541406
+22:10:34.176 -> handSwitch = 0
+22:10:34.176 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:34.283 -> the voltage of converter = 0.000000
+22:10:34.317 -> handSwitch = 0
+22:10:34.353 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:34.419 -> the voltage of converter = 0.000000
+22:10:34.456 -> handSwitch = 0
+22:10:34.491 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:34.563 -> the voltage of converter = 0.000000
+22:10:34.598 -> handSwitch = 0
+22:10:34.633 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:34.700 -> the voltage of converter = 0.000000
+22:10:34.768 -> handSwitch = 0
+22:10:34.768 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:34.873 -> the voltage of converter = 0.000000
+22:10:34.910 -> handSwitch = 0
+22:10:34.910 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:35.016 -> the voltage of converter = 0.000000
+22:10:35.051 -> handSwitch = 0
+22:10:35.051 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:35.158 -> the voltage of converter = 0.000000
+22:10:35.191 -> handSwitch = 0
+22:10:35.191 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:35.295 -> the voltage of converter = 0.000000
+22:10:35.331 -> handSwitch = 0
+22:10:35.331 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:35.436 -> the voltage of converter = 0.000000
+22:10:35.471 -> handSwitch = 0
+22:10:35.471 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:35.577 -> the voltage of converter = 0.000000
+22:10:35.610 -> handSwitch = 0
+22:10:35.646 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:35.714 -> the voltage of converter = 0.000000
+22:10:35.750 -> handSwitch = 0
+22:10:35.784 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:35.854 -> the voltage of converter = 0.000000
+22:10:35.891 -> handSwitch = 0
+22:10:35.929 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:35.998 -> the voltage of converter = 0.000000
+22:10:36.032 -> handSwitch = 0
+22:10:36.070 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:36.141 -> the voltage of converter = 0.000000
+22:10:36.174 -> handSwitch = 0
+22:10:36.207 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:36.309 -> the voltage of converter = 0.000000
+22:10:36.342 -> handSwitch = 0
+22:10:36.342 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:36.447 -> the voltage of converter = 0.000000
+22:10:36.480 -> handSwitch = 0
+22:10:36.480 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:36.583 -> the voltage of converter = 0.000000
+22:10:36.621 -> handSwitch = 0
+22:10:36.621 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:36.729 -> the voltage of converter = 0.000000
+22:10:36.763 -> handSwitch = 0
+22:10:36.763 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:36.869 -> the voltage of converter = 0.000000
+22:10:36.903 -> handSwitch = 0
+22:10:36.938 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:37.007 -> the voltage of converter = 0.000000
+22:10:37.042 -> handSwitch = 0
+22:10:37.078 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:37.147 -> the voltage of converter = 0.000000
+22:10:37.180 -> handSwitch = 0
+22:10:37.217 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:37.320 -> the voltage of converter = 0.000000
+22:10:37.356 -> handSwitch = 0
+22:10:37.356 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:37.459 -> the voltage of converter = 0.000000
+22:10:37.492 -> handSwitch = 0
+22:10:37.492 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:37.598 -> the voltage of converter = 0.000000
+22:10:37.636 -> handSwitch = 0
+22:10:37.636 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:37.742 -> the voltage of converter = 0.000000
+22:10:37.775 -> handSwitch = 0
+22:10:37.775 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:37.881 -> the voltage of converter = 0.000000
+22:10:37.915 -> handSwitch = 0
+22:10:37.915 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:38.022 -> the voltage of converter = 0.000000
+22:10:38.055 -> handSwitch = 0
+22:10:38.092 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:38.164 -> the voltage of converter = 0.000000
+22:10:38.201 -> handSwitch = 0
+22:10:38.236 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:38.307 -> the voltage of converter = 0.000000
+22:10:38.340 -> handSwitch = 0
+22:10:38.376 -> {"torque_recieved":-0.997803, "speed_recieved":4.461540, "position_recieved":2.099876}
+22:10:38.446 -> the voltage of converter = 0.000000
+22:10:38.483 -> handSwi
