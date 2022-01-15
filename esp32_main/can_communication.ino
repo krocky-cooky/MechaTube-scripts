@@ -14,8 +14,8 @@
 #define P_MAX 12.5
 #define V_MIN -46.57
 #define V_MAX 46.57
-#define T_MIN -54
-#define T_MAX 54
+#define T_MIN -6
+#define T_MAX 6
 #define Kp_MIN 0
 #define Kp_MAX 500
 #define Kd_MIN 0
@@ -50,6 +50,7 @@ int can_sendCommand(float position, float speed, float kp, float kd, float torqu
 
   //Serial.printf("{\"torque_ref\":%f, \"speed_ref\":%f, \"position_ref\":%f}\n", torqueSent, speedSent, positionSent);
   // Serial.printf("%x %x %x %x %x %x %x %x\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
+  // Serial.printf("Torque command = %d\n", (((int)buf[6] & 0xF) << 8) | buf[7]);  // CANコマンドの送信値(0-4095)をprint
 
   return 1;
 }
@@ -110,7 +111,7 @@ void packCmd(uint8_t *data, float p_des, float v_des, float kp, float kd, float 
   data[0] = p_int >> 8;                           //position 8-H
   data[1] = p_int & 0xFF;                         //position 8-L
   data[2] = v_int >> 4;                           //speed 8-H
-  data[3] = ((v_int & 0xF) << 4) | (kp_int > 8);  //speed 4-L KP-8H
+  data[3] = ((v_int & 0xF) << 4) | (kp_int >> 8);  //speed 4-L KP-8H
   data[4] = kp_int & 0xFF;                        // KP 8-L
   data[5] = kd_int >> 4;                          //Kd 8-H
   data[6] = ((kd_int & 0xF) << 4) | (t_int >> 8); //KP 4-L torque 4-H
