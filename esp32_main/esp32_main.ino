@@ -281,7 +281,7 @@ void loop()
     firstOrderDelay_resetSpeed();
   }
 
-  delay(100);
+  delay(10);
 
   portENTER_CRITICAL_ISR(&onCanReceiveMux); // CAN受信割込みと共有する変数へのアクセスはこの中で行う
   // Serial.printf("{\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueReceived, speedReceived, positionReceived);
