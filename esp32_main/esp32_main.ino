@@ -154,7 +154,7 @@ void loop()
     }
   }
   rotationAngleFromInitialPosition = positionReceived + (P_MAX - P_MIN) * numberOfTimesYouCrossedOverFromPmaxToPmin;
-  // Serial.printf("rotationAngleFromInitialPosition = %f\n", rotationAngleFromInitialPosition);
+  Serial.printf("rotationAngleFromInitialPosition = %f\n", rotationAngleFromInitialPosition);
 
   // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
   if (controlSending)
