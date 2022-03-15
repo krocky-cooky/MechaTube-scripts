@@ -20,9 +20,12 @@
 #define THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION 0.33 //エキセン動作を判定するための、モータの回転速度の閾値 [rad/s]
 #define MAX_TORQUE 4.0                                                //許容する最大トルク [Nm]
 #define MAX_SPEED 6.5                                                 //許容する最大回転速さ [rad/s]
+#define THRESHOLD_OF_COUNT_FOR_SPOTTER_MODE 30.0 //スポッターモードを行うかどうかの閾値
+#define THRESHOLD_OF_SPEED_FOR_SPOTTER_MODE 0.7 //スポッターモードのためのカウントをする際の速さの閾値
 
 // フラグ等
 bool torqueCtrlMode = 0; // 速度制御したいとき0,トルク制御したいとき1になるフラグ
+bool spotterMode = 0; //スポッターモードのフラグ
 
 // ユーザの手元にあるスイッチなど、トルク出力をON/OFFする指令
 bool handSwitch = false;
@@ -34,6 +37,8 @@ float torqueCommand = 0.0;                       // トルク指令値 [Nm]
 float speedCommand = 0.0;                        // 速度指令値 [rad/s]
 float increaseOfToraueForEccentricMotion = 0.0;  // エキセン動作時に増加するトルク量 [Nm]
 float maxSpeedWhileConcentricMotion = MAX_SPEED; // コンセン動作時に許容する最大回転速さ [rad/s], アイソキネティックトレーニング時は指定値にし、そうでない時はMAX_SPEEDに合わせる
+int countForSpotterMode = 0; //スポッターモードのためのカウント。これが閾値以上になったら補助開始
+float decreaseOfTorquePerCount = 0.5; //スポッターモードの時、1カウントあたりどれくらいトルクを減らすか
 
 // 実際にモータやコンバータに送信している指令値
 bool powerSending = false;
@@ -135,7 +140,7 @@ void loop()
 
   // can通信の受信値を表示
   unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
-  Serial.printf("{\"torque_received\":%f, \"speed_received\":%f, \"position_received\":%f}\n", torqueReceived, speedReceived, positionReceived);
+  Serial.printf("{\"torque_received\":%f, \"speed_received\":%f, \"position_received\":%f, \"rotationAngleFromInitialPosition\":%f}\n", torqueReceived, speedReceived, positionReceived, rotationAngleFromInitialPosition);
 
   //初期位置からの回転角を記録
   //位置=P_MAXから位置が増加して位置=P_MINに移動した回数をカウントする
@@ -181,6 +186,30 @@ void loop()
       {
         torqueSending = 0.0;
       }
+
+      //トレーナーの補助機能(スポッターモード)
+      //速さが閾値未満なら、スポッターモードをするかどうかのカウントを増やす
+      //速さが閾値を超えたらカウントをリセット
+      if (fabsf(speedReceived) < THRESHOLD_OF_SPEED_FOR_SPOTTER_MODE){
+        countForSpotterMode+=1;
+      }else{
+        countForSpotterMode=0;
+      }
+      //カウントが閾値を超えたらスポッターモードをオンにする
+      if (countForSpotterMode > THRESHOLD_OF_COUNT_FOR_SPOTTER_MODE){
+        spotterMode = 1;
+      }
+      //トルク指令値が減少量未満なら、カウントとフラグをリセット
+      //例えばt=0を指令すれば、スポッターモードとそのカウントが解除・リセットされる
+      if (torqueSending < decreaseOfTorquePerCount){
+        countForSpotterMode=0;
+        spotterMode = 0;
+      }
+      //スポッターモードならトルク減少させる
+      if (spotterMode){
+        torqueSending = torqueSending - decreaseOfTorquePerCount;
+      }
+      Serial.printf("{\"countForSpotterMode\":%d, \"torqueSending\":%f, \"spotterMode\":%d}\n", countForSpotterMode, torqueSending, spotterMode);
 
       //トルクが最大許容値を超える場合は、最大許容値を代入し、それ以上の上昇は許さない
       if (torqueSending > MAX_TORQUE)
