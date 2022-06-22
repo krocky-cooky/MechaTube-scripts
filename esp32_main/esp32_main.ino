@@ -111,7 +111,10 @@ void setup()
 }
 
 void loop()
-{
+{ 
+  //タッチセンサの値
+  Serial.print("touchSensor=");
+  Serial.println(touchRead(T6));
 
   // 開始時刻の記録
   timePrev = timeNow;
