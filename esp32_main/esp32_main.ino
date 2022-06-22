@@ -20,6 +20,7 @@
 #define THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION 0.33 //エキセン動作を判定するための、モータの回転速度の閾値 [rad/s]
 #define MAX_TORQUE 4.0                                                //許容する最大トルク [Nm]
 #define MAX_SPEED 6.5                                                 //許容する最大回転速さ [rad/s]
+#define MAX_LOGNUM 1024                                               //筋力測定の最大ログ数
 
 // フラグ等
 bool torqueCtrlMode = 0; // 速度制御したいとき0,トルク制御したいとき1になるフラグ
@@ -54,6 +55,11 @@ volatile float positionReceived, speedReceived, torqueReceived; // 直近のCAN�
 volatile uint8_t canReceivedMsg[6];                             // 直近のCAN受信データそのものを記録しておく
 volatile float previousPositionReceived = 0.0;                  //直前に受信した位置のデータ
 volatile float numberOfTimesYouCrossedOverFromPmaxToPmin = 0.0; //位置=P_MAXから位置が増加して位置=P_MINに移動した回数。逆向きで位置=P_MIMから位置=P_MAXに移動したら-1する。例えば、P_MAX=12.5, P_MIN=-12.5の時、positionReceived=10から、回転位置が5増えると、positionReceivedは15ではなく-10になる。
+
+// 筋力測定用
+unsigned long timeLog[MAX_LOGNUM];  // 時刻の保存用配列
+float torqueLog[MAX_LOGNUM];  // トルクのログ保存用配列
+float positionLog[MAX_LOGNUM];  // 位置のログ保存用配列
 
 //初期位置からの回転角
 //例えば、P_MAX=12.5, P_MIN=-12.5の時、positionReceived=10から、回転位置が5増えると、positionReceivedは15ではなく-10になる
@@ -135,7 +141,7 @@ void loop()
 
   // can通信の受信値を表示
   unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
-  Serial.printf("{\"torque_received\":%f, \"speed_received\":%f, \"position_received\":%f}\n", torqueReceived, speedReceived, positionReceived);
+  // Serial.printf("{\"torque_received\":%f, \"speed_received\":%f, \"position_received\":%f}\n", torqueReceived, speedReceived, positionReceived);
 
   //初期位置からの回転角を記録
   //位置=P_MAXから位置が増加して位置=P_MINに移動した回数をカウントする
@@ -248,6 +254,22 @@ void loop()
       firstOrderDelay_resetTorque();
 
       can_sendCommand(0.0, speedSending, 0.0, KD, 0.0);
+
+      // 筋力測定用コード
+      static size_t i_measure = 0;  // 筋力測定におけるサンプル番号
+      timeLog[i_measure] = micros();  // 現在時刻[us]を記録
+      torqueLog[i_measure] = torqueReceived;  // トルクを記録
+      positionLog[i_measure] = positionReceived;  // 位置を記録
+      i_measure++;  // サンプルを次へ
+      if (i_measure > MAX_LOGNUM) {  // 最大個数を超えたらインデックスをリセットし、print
+        i_measure = 0;
+        Serial.println("[");
+        for (int i_print = 0; i_print < MAX_LOGNUM; i_print++) {
+          Serial.printf("{time: %d, position: %f, torque: %f},\n", timeLog[i_print], positionLog[i_print], torqueLog[i_print]);
+        }
+        Serial.println("]");
+      }
+      
     }
     // モータ制御モードに入っていないとき、全ての変数を0にリセットしておく
   }
@@ -259,7 +281,7 @@ void loop()
     firstOrderDelay_resetSpeed();
   }
 
-  delay(100);
+  delay(10);
 
   portENTER_CRITICAL_ISR(&onCanReceiveMux); // CAN受信割込みと共有する変数へのアクセスはこの中で行う
   // Serial.printf("{\"torque\":%f, \"speed\":%f, \"position\":%f}\n", torqueReceived, speedReceived, positionReceived);
