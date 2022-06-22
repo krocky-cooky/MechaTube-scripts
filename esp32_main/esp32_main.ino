@@ -16,7 +16,7 @@
 #define P_MAX 12.5
 
 //閾値等
-#define FORCE_THRESHOLD_OF_HANDSWICH 10.0                             //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
+#define FORCE_THRESHOLD_OF_HANDSWICH 10.0                          //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
 #define THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION 0.33 //エキセン動作を判定するための、モータの回転速度の閾値 [rad/s]
 #define MAX_TORQUE 4.0                                                //許容する最大トルク [Nm]
 #define MAX_SPEED 6.5                                                 //許容する最大回転速さ [rad/s]
@@ -154,7 +154,7 @@ void loop()
     }
   }
   rotationAngleFromInitialPosition = positionReceived + (P_MAX - P_MIN) * numberOfTimesYouCrossedOverFromPmaxToPmin;
-  // Serial.printf("rotationAngleFromInitialPosition = %f\n", rotationAngleFromInitialPosition);
+  Serial.printf("rotationAngleFromInitialPosition = %f\n", rotationAngleFromInitialPosition);
 
   // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
   if (controlSending)
