@@ -3,7 +3,11 @@
 #include <math.h>
 #include <stdio.h>
 
-//定数等
+#include "Tmotor.h"
+
+// 定数等
+#define MOTOR_ID 64
+#define DRIVER_ID 0
 #define PIN_CANRX 32
 #define PIN_CANTX 33
 #define PIN_POWER 26
@@ -15,8 +19,8 @@
 #define P_MIN -12.5
 #define P_MAX 12.5
 
-//閾値等
-#define FORCE_THRESHOLD_OF_HANDSWICH 10.0                          //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
+// 閾値等
+#define FORCE_THRESHOLD_OF_HANDSWICH 10.0                             //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
 #define THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION 0.33 //エキセン動作を判定するための、モータの回転速度の閾値 [rad/s]
 #define MAX_TORQUE 4.0                                                //許容する最大トルク [Nm]
 #define MAX_SPEED 6.5                                                 //許容する最大回転速さ [rad/s]
@@ -81,6 +85,8 @@ float rangeOfTorqueChange = 0.0;                      //ピーク位置に対し
 // CAN受信割込みとmainloopの双方からアクセスする変数の排他処理
 portMUX_TYPE onCanReceiveMux = portMUX_INITIALIZER_UNLOCKED;
 
+Tmotor tmotor(MOTOR_ID, DRIVER_ID);
+
 void setup()
 {
   pinMode(PIN_POWER, OUTPUT);
@@ -97,15 +103,11 @@ void setup()
     while (1)
       ;
   }
-  CAN.onReceive(&can_onReceive);
+  CAN.onReceive(&tmotor.onRecieve);
   // modify half speed problem
   // reference: https://github.com/sandeepmistry/arduino-CAN/issues/62
   volatile uint32_t *pREG_IER = (volatile uint32_t *)0x3ff6b010;
   *pREG_IER &= ~(uint8_t)0x10;
-
-  // 直前に受信した位置のデータを初期化
-  unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
-  previousPositionReceived = positionReceived;
 
   Serial.println("[setup] setup comleted");
 }
@@ -327,11 +329,6 @@ void setPower(bool command)
     if (digitalRead(PIN_POWER) == LOW)
     {
       digitalWrite(PIN_POWER, HIGH);
-      timePowerOn = micros();
-      Serial.println("[setPower] set PIN_POWER HIGH");
-    }
-    if ((long)(timeNow - timePowerOn) > 2000000)
-    {
       powerSending = 1;
       Serial.println("[setPower] motor power: ON");
     }
@@ -341,7 +338,7 @@ void setPower(bool command)
   {
     if (controlSending == 1)
     {
-      setControl(0);
+      tmotor.sendMotorControl(0);
     }
     else
     {
@@ -364,15 +361,15 @@ void setControl(bool command)
 
   if (command == 1 && powerSending == 1 && controlSending == 0)
   {
-    can_sendControl(1);
+    tmotor.sendMotorControl(1);
     controlSending = 1;
     Serial.println("[setControl] motor control mode: ON");
   }
 
   if (command == 0 && controlSending == 1)
   {
-    can_sendCommand(0.0, 0.0, 0.0, 0.0, 0.0);
-    can_sendControl(0);
+    tmotor.sendCommand(0.0, 0.0, 0.0, 0.0, 0.0);
+    tmotor.sendMotorControl(0);
     controlSending = 0;
     Serial.println("[setControl] motor control mode: OFF");
   }
