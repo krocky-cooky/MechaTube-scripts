@@ -7,8 +7,7 @@
  * [usage]
  *
  * ESP32BuiltinCAN esp32BuiltinCAN(PIN_CANRX, PIN_CANTX);
- * portMUX_TYPE canMutex = portMUX_INITIALIZER_UNLOCKED;
- * Tmotor tmotor(esp32BuiltinCAN, canMutex, MOTOR_ID, DRIVER_ID);
+ * Tmotor tmotor(esp32BuiltinCAN, MOTOR_ID, DRIVER_ID);
  *
  * void setup() {
  *   esp32BuiltinCAN.begin(1000E3);
@@ -44,7 +43,6 @@ private:
   static const uint8_t msgSetPosToZero[8];
 
   ESP32BuiltinCAN &CAN_;
-  portMUX_TYPE &canMutex_;
   const int MOTOR_ID_;
   const int DRIVER_ID_;
   static TaskHandle_t onReceiveTaskHandle_;
@@ -59,10 +57,9 @@ private:
 public:
   /// @brief Tmotorオブジェクトを生成する
   /// @param[in] can CANインスタンスへの参照
-  /// @param[in] canMutex CANインスタンスへの同時アクセスを防止するミューテックス
   /// @param[in] motorId モーターの CAN ID
   /// @param[in] driverId ドライバーのCAN ID
-  Tmotor(ESP32BuiltinCAN &, portMUX_TYPE &, int, int);
+  Tmotor(ESP32BuiltinCAN &, int, int);
 
   /// @brief Tmotorオブジェクトのデストラクタ
   ~Tmotor();

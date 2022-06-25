@@ -9,9 +9,8 @@ TaskHandle_t Tmotor::onReceiveTaskHandle_ = NULL;
 std::map<int, Tmotor *> Tmotor::motorIdMap_;
 uint8_t Tmotor::msgReceived_[] = {0, 0, 0, 0, 0, 0};
 
-Tmotor::Tmotor(ESP32BuiltinCAN &can, portMUX_TYPE &canMutex, int motorId, int driverId)
+Tmotor::Tmotor(ESP32BuiltinCAN &can, int motorId, int driverId)
   : CAN_(can),
-    canMutex_(canMutex),
     MOTOR_ID_(motorId),
     DRIVER_ID_(driverId),
     posCommand(0.0), spdCommand(0.0), kpCommand(0.0), kdCommand(0.0), trqCommand(0.0), posRecieved(0.0), spdRecieved(0.0), trqRecieved(0.0)
@@ -42,9 +41,7 @@ int Tmotor::sendCommand(float pos, float spd, float kp, float kd, float trq)
   uint8_t buf[8];
   packCmd(buf, posCommand, spdCommand, kpCommand, kdCommand, trqCommand);
 
-  portENTER_CRITICAL(&canMutex_);
   CAN_.send(MOTOR_ID_, buf, sizeof(buf));
-  portEXIT_CRITICAL(&canMutex_);
 
   // Serial.printf("{\"trqCommand\":%f, \"spdCommand\":%f, \"posCommand\":%f}\n", trq, spd, pos);
   // Serial.printf("%x %x %x %x %x %x %x %x\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
@@ -55,27 +52,23 @@ int Tmotor::sendCommand(float pos, float spd, float kp, float kd, float trq)
 
 int Tmotor::sendMotorControl(bool command)
 {
-  portENTER_CRITICAL(&canMutex_);
   if (command == 1) {
     if (!CAN_.send(MOTOR_ID_, msgEnter, sizeof(msgEnter))) return 0;
   } else {
     if (!CAN_.send(MOTOR_ID_, msgExit, sizeof(msgExit))) return 0;
   }
-  portEXIT_CRITICAL(&canMutex_);
   return 1;
 }
 
 void IRAM_ATTR Tmotor::onRecieve(int packetSize, void *pTmotor)
 {
   Tmotor *tMotor = reinterpret_cast<Tmotor *>(pTmotor);
-  portENTER_CRITICAL_ISR(&tMotor->canMutex_);
   int id = tMotor->CAN_.packetId();
   if (id == tMotor->DRIVER_ID_ && packetSize == 6) { //ドライバー宛のメッセージであれば内容を転記
     for (int i = 0; i < 6; i++) {
       msgReceived_[i] = tMotor->CAN_.read();
     }
   }
-  portEXIT_CRITICAL_ISR(&tMotor->canMutex_);
   BaseType_t taskWoken;
   xTaskNotifyFromISR(onReceiveTaskHandle_, 0, eNoAction, &taskWoken); // 通知を送信
 }

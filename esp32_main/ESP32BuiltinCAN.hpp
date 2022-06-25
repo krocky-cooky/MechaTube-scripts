@@ -19,7 +19,8 @@ private:
     void (*func)(int, void *); //コールバック関数へのポインタ
     void *arg;                 //クラスインスタンスへのポインタなど、コールバック関数に追加で渡したい変数
   };
-  static std::vector<Cb *> cbs_;
+  static std::vector<Cb *> cbs_; //コールバックを格納する配列
+  static portMUX_TYPE canMutex_; //CANインスタンスへの同時アクセスを防止するためのミューテックス
   static void IRAM_ATTR invoke_(int packet_size);
   const uint8_t rx_;
   const uint8_t tx_;
