@@ -45,6 +45,7 @@ private:
   ESP32BuiltinCAN &CAN_;
   const int MOTOR_ID_;
   const int DRIVER_ID_;
+  bool motorCtrl_;
   static TaskHandle_t onReceiveTaskHandle_;
   static std::map<int, Tmotor *> motorIdMap_; // motorIdをkeyとして、Tmotorインスタンスへのポインタを取り出すmap
   static uint8_t msgReceived_[6];             // CAN受信メッセージ
@@ -79,6 +80,10 @@ public:
   /// @param[in] command 0:Exit motor control mode, 1:Enter motor control mode
   /// @return 0:fail, 1:success
   int sendMotorControl(bool);
+
+  /// @brief 現在モータ制御モードに入っているかを取得する
+  /// @return 0:モータ制御モードOFF, 1:モータ制御モードON
+  bool getMotorControl();
 
   /// @brief CAN受信割り込みに登録するコールバック関数
   /// @param[in] packetSize 受信したバイト数(CAN.onReceiveから渡される)

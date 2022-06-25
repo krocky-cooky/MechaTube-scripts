@@ -13,6 +13,7 @@ Tmotor::Tmotor(ESP32BuiltinCAN &can, int motorId, int driverId)
   : CAN_(can),
     MOTOR_ID_(motorId),
     DRIVER_ID_(driverId),
+    motorCtrl_(false),
     posCommand(0.0), spdCommand(0.0), kpCommand(0.0), kdCommand(0.0), trqCommand(0.0), posRecieved(0.0), spdRecieved(0.0), trqRecieved(0.0)
 {
   CAN_.set_callback(&onRecieve, this); // onReceive関数を、いま新たに生成した自身を指すポインタthisとともにコールバック登録
@@ -52,12 +53,18 @@ int Tmotor::sendCommand(float pos, float spd, float kp, float kd, float trq)
 
 int Tmotor::sendMotorControl(bool command)
 {
-  if (command == 1) {
+  if (command == 1 && motorCtrl_ == 0) {
     if (!CAN_.send(MOTOR_ID_, msgEnter, sizeof(msgEnter))) return 0;
-  } else {
+  } else if (command == 0 && motorCtrl_ == 1) {
     if (!CAN_.send(MOTOR_ID_, msgExit, sizeof(msgExit))) return 0;
   }
+  motorCtrl_ = command;
   return 1;
+}
+
+bool Tmotor::getMotorControl()
+{
+  return motorCtrl_;
 }
 
 void IRAM_ATTR Tmotor::onRecieve(int packetSize, void *pTmotor)
