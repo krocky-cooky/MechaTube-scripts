@@ -14,7 +14,7 @@ Tmotor::Tmotor(ESP32BuiltinCAN &can, int motorId, int driverId)
     MOTOR_ID_(motorId),
     DRIVER_ID_(driverId),
     motorCtrl_(false),
-    posCommand(0.0), spdCommand(0.0), kpCommand(0.0), kdCommand(0.0), trqCommand(0.0), posRecieved(0.0), spdRecieved(0.0), trqRecieved(0.0)
+    posCommand(0.0), spdCommand(0.0), kpCommand(0.0), kdCommand(0.0), trqCommand(0.0), posRecieved(0.0), spdRecieved(0.0), trqRecieved(0.0), integratingAngle(0.0)
 {
   CAN_.set_callback(&onRecieve, this); // onReceive関数を、いま新たに生成した自身を指すポインタthisとともにコールバック登録
   motorIdMap_[motorId] = this;
@@ -67,6 +67,11 @@ bool Tmotor::getMotorControl()
   return motorCtrl_;
 }
 
+void Tmotor::setIntegratingAngle(float newIntegratingAngle)
+{
+  integratingAngle = newIntegratingAngle;
+}
+
 void IRAM_ATTR Tmotor::onRecieve(int packetSize, void *pTmotor)
 {
   Tmotor *tMotor = reinterpret_cast<Tmotor *>(pTmotor);
@@ -86,10 +91,22 @@ void Tmotor::onReceiveTask()
     xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // CAN受信割り込み関数が呼ばれるまで待機
     int motorId;
     float pos, spd, trq;
-    unpackReply(msgReceived_, &motorId, &pos, &spd, &trq); // 受信メッセージをunpack
-    motorIdMap_[motorId]->posRecieved = pos;               // 変数を更新
+    unpackReply(msgReceived_, &motorId, &pos, &spd, &trq);                           // 受信メッセージをunpack
+    motorIdMap_[motorId]->integratePosition(motorIdMap_[motorId]->posRecieved, pos); // 積算位置を更新
+    motorIdMap_[motorId]->posRecieved = pos;                                         // 変数を更新
     motorIdMap_[motorId]->spdRecieved = spd;
     motorIdMap_[motorId]->trqRecieved = trq;
+  }
+}
+
+void Tmotor::integratePosition(float oldPos, float newPos)
+{
+  if (oldPos > P_MAX / 2 && newPos < P_MIN / 2) { // MAX位置÷2より大きい正の位置から、MIN位置÷2より小さい負の位置にジャンプした
+    integratingAngle += (P_MAX - oldPos + newPos - P_MIN);
+  } else if (oldPos < P_MIN / 2 && newPos > P_MAX / 2) { // MIN位置÷2より小さい負の位置から、MAX位置÷2より大きい正の位置にジャンプした
+    integratingAngle -= (oldPos - P_MIN + P_MAX - newPos);
+  } else {
+    integratingAngle += (newPos - oldPos);
   }
 }
 

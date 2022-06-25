@@ -50,6 +50,14 @@ private:
   static std::map<int, Tmotor *> motorIdMap_; // motorIdをkeyとして、Tmotorインスタンスへのポインタを取り出すmap
   static uint8_t msgReceived_[6];             // CAN受信メッセージ
   static void onReceiveTask();
+
+  /**
+   * @brief モータから受信した位置を積算位置に換算する
+   * @param oldPos ひとつ前の受信位置[rad]
+   * @param newPos 最新の受信位置[rad]
+   */
+  void integratePosition(float oldPos, float newPos);
+
   static void packCmd(uint8_t *, float, float, float, float, float);
   static int float_to_uint(float, float, float, unsigned int);
   static void unpackReply(uint8_t *, int *, float *, float *, float *);
@@ -85,6 +93,10 @@ public:
   /// @return 0:モータ制御モードOFF, 1:モータ制御モードON
   bool getMotorControl();
 
+  /// @brief この関数を呼び出した瞬間の積算位置を、強制的に指定した値にリセットする
+  /// @param newIntegratingAngle 新しく指定する積算位置[rad]
+  void setIntegratingAngle(float newIntegratingAngle);
+
   /// @brief CAN受信割り込みに登録するコールバック関数
   /// @param[in] packetSize 受信したバイト数(CAN.onReceiveから渡される)
   /// @param[in] pTmotor Tmotorインスタンスへのポインタ
@@ -102,4 +114,5 @@ public:
   float posRecieved; // モータから受信した位置[rad]
   float spdRecieved; // モータから受信した速度[rad/s]
   float trqRecieved; // モータから受信したトルク[Nm]
+  float integratingAngle; // 積算回転角[rad]
 };
