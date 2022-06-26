@@ -4,7 +4,7 @@
 // staticメンバ変数の実体を生成
 const uint8_t Tmotor::msgEnter[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc};        // Enter motor control mode
 const uint8_t Tmotor::msgExit[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfd};         // Exit motor control mode
-const uint8_t Tmotor::msgSetPosToZero[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe}; // set the preCommand position of the motor to zero
+const uint8_t Tmotor::msgSetPosToZero[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe}; // set the position of the motor to zero
 TaskHandle_t Tmotor::onReceiveTaskHandle_ = NULL;
 std::map<int, Tmotor *> Tmotor::motorIdMap_;
 uint8_t Tmotor::msgReceived_[] = {0, 0, 0, 0, 0, 0};
@@ -14,7 +14,7 @@ Tmotor::Tmotor(ESP32BuiltinCAN &can, int motorId, int driverId)
     MOTOR_ID_(motorId),
     DRIVER_ID_(driverId),
     motorCtrl_(false),
-    posCommand(0.0), spdCommand(0.0), kpCommand(0.0), kdCommand(0.0), trqCommand(0.0), posReceived(0.0), spdReceived(0.0), trqReceived(0.0), integratingAngle(0.0)
+    posSent(0.0), spdSent(0.0), kpSent(0.0), kdSent(0.0), trqSent(0.0), posReceived(0.0), spdReceived(0.0), trqReceived(0.0), integratingAngle(0.0)
 {
   CAN_.set_callback(&onReceive, this); // onReceive関数を、いま新たに生成した自身を指すポインタthisとともにコールバック登録
   motorIdMap_[motorId] = this;
@@ -33,18 +33,18 @@ bool Tmotor::operator<(const Tmotor &rhs) const
 int Tmotor::sendCommand(float pos, float spd, float kp, float kd, float trq)
 {
   // limit data to be within bounds
-  posCommand = fminf(fmaxf(P_MIN, pos), P_MAX);
-  spdCommand = fminf(fmaxf(V_MIN, spd), V_MAX);
-  kpCommand = fminf(fmaxf(Kp_MIN, kp), Kp_MAX);
-  kdCommand = fminf(fmaxf(Kd_MIN, kd), Kd_MAX);
-  trqCommand = fminf(fmaxf(T_MIN, trq), T_MAX);
+  posSent = fminf(fmaxf(P_MIN, pos), P_MAX);
+  spdSent = fminf(fmaxf(V_MIN, spd), V_MAX);
+  kpSent = fminf(fmaxf(Kp_MIN, kp), Kp_MAX);
+  kdSent = fminf(fmaxf(Kd_MIN, kd), Kd_MAX);
+  trqSent = fminf(fmaxf(T_MIN, trq), T_MAX);
 
   uint8_t buf[8];
-  packCmd(buf, posCommand, spdCommand, kpCommand, kdCommand, trqCommand);
+  packCmd(buf, posSent, spdSent, kpSent, kdSent, trqSent);
 
   CAN_.send(MOTOR_ID_, buf, sizeof(buf));
 
-  // Serial.printf("{\"trqCommand\":%f, \"spdCommand\":%f, \"posCommand\":%f}\n", trq, spd, pos);
+  // Serial.printf("{\"trqSent\":%f, \"spdSent\":%f, \"posSent\":%f}\n", trq, spd, pos);
   // Serial.printf("%x %x %x %x %x %x %x %x\n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
   // Serial.printf("trq command = %d\n", (((int)buf[6] & 0xF) << 8) | buf[7]);  // CANコマンドの送信値(0-4095)をprint
 

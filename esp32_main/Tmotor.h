@@ -104,11 +104,11 @@ public:
   static void IRAM_ATTR onReceive(int, void *);
 
   // 指令値
-  float posCommand; // モータに送信した位置指令値[rad]
-  float spdCommand; // モータに送信した速度指令値[rad/s]
-  float kpCommand;  // モータに送信したkp
-  float kdCommand;  // モータに送信したkd
-  float trqCommand; // モータに送信したトルク指令値[Nm]
+  float posSent; // モータに送信した位置指令値[rad]
+  float spdSent; // モータに送信した速度指令値[rad/s]
+  float kpSent;  // モータに送信したkp
+  float kdSent;  // モータに送信したkd
+  float trqSent; // モータに送信したトルク指令値[Nm]
 
   // 受信値
   float posReceived; // モータから受信した位置[rad]
