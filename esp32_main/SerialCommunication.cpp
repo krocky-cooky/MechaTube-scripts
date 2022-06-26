@@ -4,8 +4,7 @@ SerialCommunication::SerialCommunication()
   : power(false), motorControl(false), mode(Mode::SpdCtrl), trq(0.0f), spd(0.0f)
 {
 }
-
-void SerialCommunication::loop()
+char SerialCommunication::receive()
 {
   char buf[SERIAL_BUFSIZE] = "";
   int i = 0;
@@ -19,15 +18,16 @@ void SerialCommunication::loop()
 
     if (c == '\n') { // 改行でコマンドの終了を検知する
       i = 0;
-      decodeCommand(buf);
+      return decodeCommand(buf);
     }
   }
+  return 0;
 }
 
 char SerialCommunication::decodeCommand(const char *buf)
 {
-  char key;
-  float value;
+  char key = 0;
+  float value = 0.0;
   sscanf(buf, "%c%f", &key, &value); // scan the command
 
   switch (key) { // copy the commanded value

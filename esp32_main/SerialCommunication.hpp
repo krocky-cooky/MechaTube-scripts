@@ -29,9 +29,10 @@ public:
   SerialCommunication();
 
   /**
-   * @brief シリアル通信ポートを監視し、メッセージが来ていたらデコードして最新の値を更新する。メインループ内で休みなく実行すること
+   * @brief シリアル通信ポートからコマンドを受信し、指令値を更新する
+   * @return コマンドが送られていない場合は0を、正常に解釈できた場合はコマンドの種類('p','m','t','s')を返す
    */
-  void loop();
+  char receive();
 
 private:
   static constexpr size_t SERIAL_BUFSIZE = 20;
