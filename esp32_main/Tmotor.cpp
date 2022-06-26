@@ -6,8 +6,8 @@ const uint8_t Tmotor::msgEnter[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0
 const uint8_t Tmotor::msgExit[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfd};         // Exit motor control mode
 const uint8_t Tmotor::msgSetPosToZero[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe}; // set the position of the motor to zero
 TaskHandle_t Tmotor::onReceiveTaskHandle_ = NULL;
-std::map<int, Tmotor *> Tmotor::motorIdMap_;
 uint8_t Tmotor::msgReceived_[] = {0, 0, 0, 0, 0, 0};
+uint64_t Tmotor::msgReceivedTime_ = 0;
 
 Tmotor::Tmotor(ESP32BuiltinCAN &can, int motorId, int driverId)
   : CAN_(can),
@@ -16,13 +16,11 @@ Tmotor::Tmotor(ESP32BuiltinCAN &can, int motorId, int driverId)
     motorCtrl_(false),
     posSent(0.0), spdSent(0.0), kpSent(0.0), kdSent(0.0), trqSent(0.0), posReceived(0.0), spdReceived(0.0), trqReceived(0.0), integratingAngle(0.0)
 {
-  CAN_.set_callback(&onReceive, this); // onReceive関数を、いま新たに生成した自身を指すポインタthisとともにコールバック登録
-  motorIdMap_[motorId] = this;
-}
-
-Tmotor::~Tmotor()
-{
-  motorIdMap_.erase(MOTOR_ID_);
+  CAN_.set_callback(&onReceive, this);                                // onReceive関数を、いま新たに生成した自身を指すポインタthisとともにコールバック登録
+  ringbuf_ = xRingbufferCreateNoSplit(sizeof(Log), RINGBUF_ITEM_NUM); // ログをためておくリングバッファの確保
+  if (ringbuf_ == NULL) {
+    printf("Failed to create ring buffer\n");
+  }
 }
 
 bool Tmotor::operator<(const Tmotor &rhs) const
@@ -72,13 +70,39 @@ void Tmotor::setIntegratingAngle(float newIntegratingAngle)
   integratingAngle = newIntegratingAngle;
 }
 
+int Tmotor::logAvailable()
+{
+  UBaseType_t *uxFree, *uxRead, *uxWrite, *uxAcquire, *uxItemsWaiting;
+  vRingbufferGetInfo(ringbuf_, uxFree, uxRead, uxWrite, uxItemsWaiting);
+  return static_cast<int>(*uxItemsWaiting);
+}
+
+Tmotor::Log Tmotor::logRead()
+{
+  static size_t itemSize = sizeof(Tmotor::Log); // Receive an item from no-split ring buffer
+  Tmotor::Log *item = reinterpret_cast<Tmotor::Log *>(xRingbufferReceive(ringbuf_, &itemSize, pdMS_TO_TICKS(10)));
+  if (item != NULL) {                                                // Check received item
+    vRingbufferReturnItem(ringbuf_, reinterpret_cast<void *>(item)); // return in order to free the item retrieved
+  } else {                                                           // Failed to receive item
+    printf("Failed to receive item\n");
+  }
+  return *item;
+}
+
 void IRAM_ATTR Tmotor::onReceive(int packetSize, void *pTmotor)
 {
-  Tmotor *tMotor = reinterpret_cast<Tmotor *>(pTmotor);
-  int id = tMotor->CAN_.packetId();
-  if (id == tMotor->DRIVER_ID_ && packetSize == 6) { //ドライバー宛のメッセージであれば内容を転記
-    for (int i = 0; i < 6; i++) {
-      msgReceived_[i] = tMotor->CAN_.read();
+  msgReceivedTime_ = micros();
+  reinterpret_cast<Tmotor *>(pTmotor)->onReceiveMember(packetSize);
+}
+
+void IRAM_ATTR Tmotor::onReceiveMember(int packetSize)
+{
+  if (CAN_.available()) {
+    int id = CAN_.packetId();
+    if (id == DRIVER_ID_) { //ドライバー宛のメッセージであれば内容を転記
+      for (int i = 0; i < 6; i++) {
+        msgReceived_[i] = CAN_.read();
+      }
     }
   }
   BaseType_t taskWoken;
@@ -91,11 +115,20 @@ void Tmotor::onReceiveTask()
     xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // CAN受信割り込み関数が呼ばれるまで待機
     int motorId;
     float pos, spd, trq;
-    unpackReply(msgReceived_, &motorId, &pos, &spd, &trq);                           // 受信メッセージをunpack
-    motorIdMap_[motorId]->integratePosition(motorIdMap_[motorId]->posReceived, pos); // 積算位置を更新
-    motorIdMap_[motorId]->posReceived = pos;                                         // 変数を更新
-    motorIdMap_[motorId]->spdReceived = spd;
-    motorIdMap_[motorId]->trqReceived = trq;
+    unpackReply(msgReceived_, &motorId, &pos, &spd, &trq); // 受信メッセージをunpack
+    if (motorId == MOTOR_ID_) {                            // 自分宛てのメッセージの場合
+      integratePosition(posReceived, pos);                 // 積算位置を更新
+      posReceived = pos;                                   // 変数を更新
+      spdReceived = spd;
+      trqReceived = trq;
+      Log log; // 受信メッセージのログ格納
+      log.timestamp = msgReceivedTime_;
+      log.pos = pos;
+      log.spd = spd;
+      log.trq = trq;
+      log.integratingAngle = integratingAngle;
+      xRingbufferSend(ringbuf_, &log, sizeof(Log), pdMS_TO_TICKS(10));
+    }
   }
 }
 

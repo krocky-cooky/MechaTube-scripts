@@ -63,6 +63,11 @@ int ESP32BuiltinCAN::read()
   return CAN.read();
 }
 
+int ESP32BuiltinCAN::available()
+{
+  return CAN.available();
+}
+
 void IRAM_ATTR ESP32BuiltinCAN::invoke_(int packet_size)
 {
   portENTER_CRITICAL_ISR(&canMutex_);

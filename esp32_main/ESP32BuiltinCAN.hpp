@@ -73,4 +73,10 @@ public:
    * @return 受信した文字. なにも受信していない場合は-1を返す
    */
   int read();
+
+  /**
+   * @brief 受信バッファにたまっているバイト数
+   * @return バイト数
+   */
+  int available();
 };
