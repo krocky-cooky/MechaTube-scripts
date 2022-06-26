@@ -14,9 +14,9 @@ Tmotor::Tmotor(ESP32BuiltinCAN &can, int motorId, int driverId)
     MOTOR_ID_(motorId),
     DRIVER_ID_(driverId),
     motorCtrl_(false),
-    posCommand(0.0), spdCommand(0.0), kpCommand(0.0), kdCommand(0.0), trqCommand(0.0), posRecieved(0.0), spdRecieved(0.0), trqRecieved(0.0), integratingAngle(0.0)
+    posCommand(0.0), spdCommand(0.0), kpCommand(0.0), kdCommand(0.0), trqCommand(0.0), posReceived(0.0), spdReceived(0.0), trqReceived(0.0), integratingAngle(0.0)
 {
-  CAN_.set_callback(&onRecieve, this); // onReceive関数を、いま新たに生成した自身を指すポインタthisとともにコールバック登録
+  CAN_.set_callback(&onReceive, this); // onReceive関数を、いま新たに生成した自身を指すポインタthisとともにコールバック登録
   motorIdMap_[motorId] = this;
 }
 
@@ -72,7 +72,7 @@ void Tmotor::setIntegratingAngle(float newIntegratingAngle)
   integratingAngle = newIntegratingAngle;
 }
 
-void IRAM_ATTR Tmotor::onRecieve(int packetSize, void *pTmotor)
+void IRAM_ATTR Tmotor::onReceive(int packetSize, void *pTmotor)
 {
   Tmotor *tMotor = reinterpret_cast<Tmotor *>(pTmotor);
   int id = tMotor->CAN_.packetId();
@@ -92,10 +92,10 @@ void Tmotor::onReceiveTask()
     int motorId;
     float pos, spd, trq;
     unpackReply(msgReceived_, &motorId, &pos, &spd, &trq);                           // 受信メッセージをunpack
-    motorIdMap_[motorId]->integratePosition(motorIdMap_[motorId]->posRecieved, pos); // 積算位置を更新
-    motorIdMap_[motorId]->posRecieved = pos;                                         // 変数を更新
-    motorIdMap_[motorId]->spdRecieved = spd;
-    motorIdMap_[motorId]->trqRecieved = trq;
+    motorIdMap_[motorId]->integratePosition(motorIdMap_[motorId]->posReceived, pos); // 積算位置を更新
+    motorIdMap_[motorId]->posReceived = pos;                                         // 変数を更新
+    motorIdMap_[motorId]->spdReceived = spd;
+    motorIdMap_[motorId]->trqReceived = trq;
   }
 }
 

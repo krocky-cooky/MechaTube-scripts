@@ -101,7 +101,7 @@ public:
   /// @param[in] packetSize 受信したバイト数(CAN.onReceiveから渡される)
   /// @param[in] pTmotor Tmotorインスタンスへのポインタ
   /// @return none
-  static void IRAM_ATTR onRecieve(int, void *);
+  static void IRAM_ATTR onReceive(int, void *);
 
   // 指令値
   float posCommand; // モータに送信した位置指令値[rad]
@@ -111,8 +111,8 @@ public:
   float trqCommand; // モータに送信したトルク指令値[Nm]
 
   // 受信値
-  float posRecieved; // モータから受信した位置[rad]
-  float spdRecieved; // モータから受信した速度[rad/s]
-  float trqRecieved; // モータから受信したトルク[Nm]
+  float posReceived; // モータから受信した位置[rad]
+  float spdReceived; // モータから受信した速度[rad/s]
+  float trqReceived; // モータから受信したトルク[Nm]
   float integratingAngle; // 積算回転角[rad]
 };
