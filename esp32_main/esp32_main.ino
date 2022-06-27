@@ -178,94 +178,94 @@ void loop()
       if (handSwitch)
       { // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
 
-        // エキセン動作時(モータの回転速度は正)は指示トルクを大きくする
-        // Serial.printf("increaseOfToraueForEccentricMotion = %f\n", increaseOfToraueForEccentricMotion);
+        // // エキセン動作時(モータの回転速度は正)は指示トルクを大きくする
+        // // Serial.printf("increaseOfToraueForEccentricMotion = %f\n", increaseOfToraueForEccentricMotion);
 
-        if (speedReceived > THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION)
-        {
-          torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand + increaseOfToraueForEccentricMotion, (float)dtMicros / 1e6, TAU_WHILE_NON_ECCENTRIC_MOTION);
-        }
-        else
-        {
+        // if (speedReceived > THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION)
+        // {
+        //   torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand + increaseOfToraueForEccentricMotion, (float)dtMicros / 1e6, TAU_WHILE_NON_ECCENTRIC_MOTION);
+        // }
+        // else
+        // {
           torqueSending = firstOrderDelay_torque_controlling_tau(torqueCommand, (float)dtMicros / 1e6, TAU_WHILE_NON_ECCENTRIC_MOTION);
-        }
+        // }
       }
       else
       {
         torqueSending = 0.0;
       }
 
-      //トレーナーの補助機能(スポッターモード)
-      //速さが閾値未満なら、スポッターモードをするかどうかのカウントを増やす
-      //速さが閾値を超えたらカウントをリセット
-      if (fabsf(speedReceived) < THRESHOLD_OF_SPEED_FOR_SPOTTER_MODE){
-        countForSpotterMode+=1;
-      }else{
-        countForSpotterMode=0;
-      }
-      //カウントが閾値を超えたらスポッターモードをオンにする
-      if (countForSpotterMode > THRESHOLD_OF_COUNT_FOR_SPOTTER_MODE){
-        spotterMode = 1;
-      }
-      //トルク指令値が減少量未満なら、カウントとフラグをリセット
-      //例えばt=0を指令すれば、スポッターモードとそのカウントが解除・リセットされる
-      if (torqueSending < decreaseOfTorquePerCount){
-        countForSpotterMode=0;
-        spotterMode = 0;
-      }
-      //スポッターモードならトルク減少させる
-      if (spotterMode){
-        torqueSending = torqueSending - decreaseOfTorquePerCount;
-      }
-      Serial.printf("{\"countForSpotterMode\":%d, \"torqueSending\":%f, \"spotterMode\":%d}\n", countForSpotterMode, torqueSending, spotterMode);
+      // //トレーナーの補助機能(スポッターモード)
+      // //速さが閾値未満なら、スポッターモードをするかどうかのカウントを増やす
+      // //速さが閾値を超えたらカウントをリセット
+      // if (fabsf(speedReceived) < THRESHOLD_OF_SPEED_FOR_SPOTTER_MODE){
+      //   countForSpotterMode+=1;
+      // }else{
+      //   countForSpotterMode=0;
+      // }
+      // //カウントが閾値を超えたらスポッターモードをオンにする
+      // if (countForSpotterMode > THRESHOLD_OF_COUNT_FOR_SPOTTER_MODE){
+      //   spotterMode = 1;
+      // }
+      // //トルク指令値が減少量未満なら、カウントとフラグをリセット
+      // //例えばt=0を指令すれば、スポッターモードとそのカウントが解除・リセットされる
+      // if (torqueSending < decreaseOfTorquePerCount){
+      //   countForSpotterMode=0;
+      //   spotterMode = 0;
+      // }
+      // //スポッターモードならトルク減少させる
+      // if (spotterMode){
+      //   torqueSending = torqueSending - decreaseOfTorquePerCount;
+      // }
+      // Serial.printf("{\"countForSpotterMode\":%d, \"torqueSending\":%f, \"spotterMode\":%d}\n", countForSpotterMode, torqueSending, spotterMode);
 
-      //トルクが最大許容値を超える場合は、最大許容値を代入し、それ以上の上昇は許さない
-      if (torqueSending > MAX_TORQUE)
-      {
-        torqueSending = MAX_TORQUE;
-      }
+      // //トルクが最大許容値を超える場合は、最大許容値を代入し、それ以上の上昇は許さない
+      // if (torqueSending > MAX_TORQUE)
+      // {
+      //   torqueSending = MAX_TORQUE;
+      // }
 
       speedSending = 0.0;           // 速度送信値は不要なので0とする
       firstOrderDelay_resetSpeed(); // 速度の1次遅れ計算用変数をリセット
 
-      // 指定条件を満たせば、PrimeFittnessのような可変抵抗トレーニングor等速度トレーニングを実行
-      //どちらも実行するようなことはないようにする
-      //トルク制限つき
-      if (torqueReceived > MAX_TORQUE)
-      {
-        can_sendCommand(0.0, 0.0, 0.0, 0.0, MAX_TORQUE);
-      }
-      else
-      {
-        //ピーク時のトルクの増分と、負荷のピークの裾野が指令されており、かつ等速度トレーニングの実行条件が満たされていなければ、可変トレーニングを実行
-        if (increaseOfToraueWhenPeak * rangeOfTorqueChange && maxSpeedWhileConcentricMotion >= 1.1)
-        {
-          //ピークからの距離が指定範囲内かどうか
-          if (fabsf(rotationAngleFromInitialPosition - rotationAngleFromInitialPositionWhenPeak) < rangeOfTorqueChange)
-          {
-            //ピークから離れている分だけ、ピークに比べてトルクを減らす
-            torqueSending += increaseOfToraueWhenPeak - fabsf(rotationAngleFromInitialPosition - rotationAngleFromInitialPositionWhenPeak) / rangeOfTorqueChange * increaseOfToraueWhenPeak;
-          }
+      // // 指定条件を満たせば、PrimeFittnessのような可変抵抗トレーニングor等速度トレーニングを実行
+      // //どちらも実行するようなことはないようにする
+      // //トルク制限つき
+      // if (torqueReceived > MAX_TORQUE)
+      // {
+      //   can_sendCommand(0.0, 0.0, 0.0, 0.0, MAX_TORQUE);
+      // }
+      // else
+      // {
+      //   //ピーク時のトルクの増分と、負荷のピークの裾野が指令されており、かつ等速度トレーニングの実行条件が満たされていなければ、可変トレーニングを実行
+      //   if (increaseOfToraueWhenPeak * rangeOfTorqueChange && maxSpeedWhileConcentricMotion >= 1.1)
+      //   {
+      //     //ピークからの距離が指定範囲内かどうか
+      //     if (fabsf(rotationAngleFromInitialPosition - rotationAngleFromInitialPositionWhenPeak) < rangeOfTorqueChange)
+      //     {
+      //       //ピークから離れている分だけ、ピークに比べてトルクを減らす
+      //       torqueSending += increaseOfToraueWhenPeak - fabsf(rotationAngleFromInitialPosition - rotationAngleFromInitialPositionWhenPeak) / rangeOfTorqueChange * increaseOfToraueWhenPeak;
+      //     }
+      //     can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending); // 送信
+      //   }
+      //   //持ち上げるときの制限速度が1.1未満であり、かつ可変トレーニングの実行条件が満たされていなければ、等速性トレーニングにする
+      //   else if (maxSpeedWhileConcentricMotion < 1.1 && increaseOfToraueWhenPeak * rangeOfTorqueChange == 0)
+      //   {
+      //     if (speedReceived < -maxSpeedWhileConcentricMotion)
+      //     {
+      //       can_sendCommand(0.0, -maxSpeedWhileConcentricMotion, 0.0, KD, 0.0);
+      //     }
+      //     else
+      //     {
+      //       can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending); // 送信
+      //     }
+      //   }
+      //   else
+      //   {
+      //    // 等速度トレーニングも可変トレーニングも実行されなければ、そのままトルクを送信
           can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending); // 送信
-        }
-        //持ち上げるときの制限速度が1.1未満であり、かつ可変トレーニングの実行条件が満たされていなければ、等速性トレーニングにする
-        else if (maxSpeedWhileConcentricMotion < 1.1 && increaseOfToraueWhenPeak * rangeOfTorqueChange == 0)
-        {
-          if (speedReceived < -maxSpeedWhileConcentricMotion)
-          {
-            can_sendCommand(0.0, -maxSpeedWhileConcentricMotion, 0.0, KD, 0.0);
-          }
-          else
-          {
-            can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending); // 送信
-          }
-        }
-        else
-        {
-          //等速度トレーニングも可変トレーニングも実行されなければ、そのままトルクを送信
-          can_sendCommand(0.0, 0.0, 0.0, 0.0, torqueSending); // 送信
-        }
-      }
+      //   }
+      // }
 
       //直前の位置データを更新
       previousPositionReceived = positionReceived;
