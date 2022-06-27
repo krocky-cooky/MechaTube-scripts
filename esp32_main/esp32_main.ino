@@ -3,6 +3,9 @@
 #include <math.h>
 #include <stdio.h>
 
+#include <WiFi.h>
+#include <ESPAsyncWebServer.h>
+
 //定数等
 #define PIN_CANRX 32
 #define PIN_CANTX 33
@@ -81,6 +84,30 @@ float rangeOfTorqueChange = 0.0;                      //ピーク位置に対し
 // CAN受信割込みとmainloopの双方からアクセスする変数の排他処理
 portMUX_TYPE onCanReceiveMux = portMUX_INITIALIZER_UNLOCKED;
 
+
+// websocket通信のための情報
+const char* ssid = "";
+const char* password =  "";  
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+
+// websocket通信で送るjsonのための文字データ
+char json_data[256];
+
+
+void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
+  
+  if(type == WS_EVT_CONNECT){
+  
+    Serial.println("Websocket client connection received");
+     
+  } else if(type == WS_EVT_DISCONNECT){
+ 
+    Serial.println("Client disconnected");
+  
+  }
+}
+
 void setup()
 {
   pinMode(PIN_POWER, OUTPUT);
@@ -107,12 +134,26 @@ void setup()
   unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
   previousPositionReceived = positionReceived;
 
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi..");
+  }
+  
+  Serial.println(WiFi.localIP());
+  
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
+  
+  server.begin();
+
   Serial.println("[setup] setup comleted");
 }
 
 void loop()
 {
-
+ 
   // 開始時刻の記録
   timePrev = timeNow;
   timeNow = micros();
@@ -148,6 +189,11 @@ void loop()
   unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
   Serial.printf("{\"torque_received\":%f, \"speed_received\":%f, \"position_received\":%f, \"rotationAngleFromInitialPosition\":%f}\n", torqueReceived, speedReceived, positionReceived, rotationAngleFromInitialPosition);
 
+  // can通信の受信値をwebSocketで配信
+  sprintf(json_data, "{\"torque_received\":%f, \"speed_received\":%f, \"position_received\":%f, \"rotationAngleFromInitialPosition\":%f}", torqueReceived, speedReceived, positionReceived, rotationAngleFromInitialPosition);
+  ws.textAll(json_data);
+  delay(500);
+  
   //初期位置からの回転角を記録
   //位置=P_MAXから位置が増加して位置=P_MINに移動した回数をカウントする
   //速度が正なのに、位置の符号が正から負に変化したら、位置=P_MAXから位置が増加して位置=P_MINに移動していると判断
@@ -218,7 +264,6 @@ void loop()
         torqueSending = torqueSending - decreaseOfTorquePerCount;
       }
       Serial.printf("{\"countForSpotterMode\":%d, \"torqueSending\":%f, \"spotterMode\":%d}\n", countForSpotterMode, torqueSending, spotterMode);
-
       //トルクが最大許容値を超える場合は、最大許容値を代入し、それ以上の上昇は許さない
       if (torqueSending > MAX_TORQUE)
       {
