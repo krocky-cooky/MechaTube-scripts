@@ -85,9 +85,14 @@ float rangeOfTorqueChange = 0.0;                      //ピーク位置に対し
 portMUX_TYPE onCanReceiveMux = portMUX_INITIALIZER_UNLOCKED;
 
 
-// websocket通信のための情報
+// ここにwifi情報を入力
 const char* ssid = "";
 const char* password =  "";  
+const IPAddress ip();
+const IPAddress gateway();
+const IPAddress subnet();
+
+// websocket
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
@@ -134,6 +139,12 @@ void setup()
   unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
   previousPositionReceived = positionReceived;
 
+  
+  // WiFIのsetup
+   if (!WiFi.config(ip,gateway,subnet)){
+       Serial.println("Failed to configure!");
+   }
+   
   WiFi.begin(ssid, password);
   
   while (WiFi.status() != WL_CONNECTED) {
