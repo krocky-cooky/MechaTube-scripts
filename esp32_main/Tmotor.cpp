@@ -1,22 +1,39 @@
 #include "Tmotor.h"
 #include "ESP32BuiltinCAN.hpp"
+#include "esp_task.h"
 
-// staticメンバ変数の実体を生成
+// staticメンバの実体を生成
 const uint8_t Tmotor::msgEnter[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc};        // Enter motor control mode
 const uint8_t Tmotor::msgExit[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfd};         // Exit motor control mode
-const uint8_t Tmotor::msgSetPosToZero[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe}; // set the position of the motor to zero
-TaskHandle_t Tmotor::onReceiveTaskHandle_ = NULL;
-uint8_t Tmotor::msgReceived_[] = {0, 0, 0, 0, 0, 0};
-uint64_t Tmotor::msgReceivedTime_ = 0;
+const uint8_t Tmotor::msgSetPosToZero[8] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe}; // set the position of the motor to zero                                                      // ドライバーID
+std::map<int, Tmotor *> Tmotor::motorIdMap_;
 
 Tmotor::Tmotor(ESP32BuiltinCAN &can, int motorId, int driverId)
   : CAN_(can),
     MOTOR_ID_(motorId),
     DRIVER_ID_(driverId),
     motorCtrl_(false),
+    onReceiveTaskHandle_(NULL),
+    msgReceived_({0, 0, 0, 0, 0, 0}),
+    msgReceivedTime_(0), // CAN受信時刻
     posSent(0.0), spdSent(0.0), kpSent(0.0), kdSent(0.0), trqSent(0.0), posReceived(0.0), spdReceived(0.0), trqReceived(0.0), integratingAngle(0.0)
 {
-  CAN_.set_callback(&onReceive, this);                                // onReceive関数を、いま新たに生成した自身を指すポインタthisとともにコールバック登録
+  motorIdMap_[MOTOR_ID_] = this; // モータID一覧に自身を登録
+}
+
+Tmotor::~Tmotor()
+{
+  motorIdMap_.erase(MOTOR_ID_); // モータID一覧から自身を削除
+}
+
+void Tmotor::init()
+{
+  Serial.printf("[Tmotor] init motorIdMap_.size()=%d\n", motorIdMap_.size());
+  CAN_.clear_callback();               // 登録されているCAN受信割り込み関数をすべて削除(CAN受信割り込みに登録する関数は1つだけとする)
+  CAN_.set_callback(&onReceive, this); // onReceive関数を、いま新たに生成した自身を指すポインタthisとともにコールバック登録
+
+  xTaskCreatePinnedToCore(onReceiveTask, "onReceiveTask", 8192, this, ESP_TASK_TIMER_PRIO - 1, &onReceiveTaskHandle_, APP_CPU_NUM); // 受信時に実行するタスクを登録
+
   ringbuf_ = xRingbufferCreateNoSplit(sizeof(Log), RINGBUF_ITEM_NUM); // ログをためておくリングバッファの確保
   if (ringbuf_ == NULL) {
     printf("Failed to create ring buffer\n");
@@ -72,9 +89,9 @@ void Tmotor::setIntegratingAngle(float newIntegratingAngle)
 
 int Tmotor::logAvailable()
 {
-  UBaseType_t *uxFree, *uxRead, *uxWrite, *uxAcquire, *uxItemsWaiting;
-  vRingbufferGetInfo(ringbuf_, uxFree, uxRead, uxWrite, uxItemsWaiting);
-  return static_cast<int>(*uxItemsWaiting);
+  UBaseType_t uxItemsWaiting;
+  vRingbufferGetInfo(ringbuf_, NULL, NULL, NULL, &uxItemsWaiting); // Arguments can be set to NULL if they are not required
+  return static_cast<int>(uxItemsWaiting);
 }
 
 Tmotor::Log Tmotor::logRead()
@@ -91,44 +108,57 @@ Tmotor::Log Tmotor::logRead()
 
 void IRAM_ATTR Tmotor::onReceive(int packetSize, void *pTmotor)
 {
-  msgReceivedTime_ = micros();
-  reinterpret_cast<Tmotor *>(pTmotor)->onReceiveMember(packetSize);
-}
-
-void IRAM_ATTR Tmotor::onReceiveMember(int packetSize)
-{
-  if (CAN_.available()) {
-    int id = CAN_.packetId();
-    if (id == DRIVER_ID_) { //ドライバー宛のメッセージであれば内容を転記
+  Tmotor *tmotorPassedByISR = reinterpret_cast<Tmotor *>(pTmotor);
+  static uint8_t msgBuf[6];
+  Serial.println("[Tmotor] onReceive");
+  tmotorPassedByISR->msgReceivedTime_ = micros(); // 受信時刻を取得
+  Serial.println("[Tmotor] onReceive a");
+  if (tmotorPassedByISR->CAN_.available()) { // CANメッセージが到着していれば読み取る
+    Serial.println("[Tmotor] onReceive b");
+    int id = tmotorPassedByISR->CAN_.packetId();
+    Serial.println("[Tmotor] onReceive c");
+    if (id == tmotorPassedByISR->DRIVER_ID_) { // 宛先IDを念のため確認し、ドライバーIDと一致すれば転記
       for (int i = 0; i < 6; i++) {
-        msgReceived_[i] = CAN_.read();
+        msgBuf[i] = tmotorPassedByISR->CAN_.read();
+      }
+      int motorId = msgBuf[0];              // メッセージに含まれる、送信元モータIDを取得
+      if (motorIdMap_.count(motorId) > 0) { // 送信元モータIDが存在すれば
+        for (int i = 0; i < 6; i++) {       // 送信元モータが保持するバッファにメッセージを転記
+          motorIdMap_[motorId]->msgReceived_[i] = msgBuf[i];
+        }
+        BaseType_t taskWoken;
+        xTaskNotifyFromISR(motorIdMap_[motorId]->onReceiveTaskHandle_, 0, eNoAction, &taskWoken); // 受信タスクに通知を送信
       }
     }
   }
-  BaseType_t taskWoken;
-  xTaskNotifyFromISR(onReceiveTaskHandle_, 0, eNoAction, &taskWoken); // 通知を送信
 }
 
-void Tmotor::onReceiveTask()
+void Tmotor::onReceiveTask(void *pTmotor)
 {
   while (1) {
     xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // CAN受信割り込み関数が呼ばれるまで待機
-    int motorId;
-    float pos, spd, trq;
-    unpackReply(msgReceived_, &motorId, &pos, &spd, &trq); // 受信メッセージをunpack
-    if (motorId == MOTOR_ID_) {                            // 自分宛てのメッセージの場合
-      integratePosition(posReceived, pos);                 // 積算位置を更新
-      posReceived = pos;                                   // 変数を更新
-      spdReceived = spd;
-      trqReceived = trq;
-      Log log; // 受信メッセージのログ格納
-      log.timestamp = msgReceivedTime_;
-      log.pos = pos;
-      log.spd = spd;
-      log.trq = trq;
-      log.integratingAngle = integratingAngle;
-      xRingbufferSend(ringbuf_, &log, sizeof(Log), pdMS_TO_TICKS(10));
-    }
+    reinterpret_cast<Tmotor *>(pTmotor)->update();
+  }
+}
+
+void Tmotor::update()
+{
+  Serial.println("[update] a");
+  int motorId;
+  float pos, spd, trq;
+  unpackReply(msgReceived_, &motorId, &pos, &spd, &trq); // 受信メッセージをunpack
+  if (motorId == MOTOR_ID_) {                            // 自分宛てのメッセージの場合
+    integratePosition(posReceived, pos);                 // 積算位置を更新
+    posReceived = pos;                                   // 変数を更新
+    spdReceived = spd;
+    trqReceived = trq;
+    Log log; // 受信メッセージのログ格納
+    log.timestamp = msgReceivedTime_;
+    log.pos = pos;
+    log.spd = spd;
+    log.trq = trq;
+    log.integratingAngle = integratingAngle;
+    xRingbufferSend(ringbuf_, &log, sizeof(Log), pdMS_TO_TICKS(10));
   }
 }
 

@@ -70,8 +70,11 @@ int ESP32BuiltinCAN::available()
 
 void IRAM_ATTR ESP32BuiltinCAN::invoke_(int packet_size)
 {
+  Serial.println("[CAN] invoke a");
   portENTER_CRITICAL_ISR(&canMutex_);
+  Serial.println("[CAN] invole b");
   for (auto cb_ : cbs_) { // 登録されているコールバック関数をすべて実行
+    Serial.println("[CAN] invoke c");
     cb_->func(packet_size, cb_->arg);
   }
   portEXIT_CRITICAL_ISR(&canMutex_);

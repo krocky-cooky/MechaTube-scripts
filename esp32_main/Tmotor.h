@@ -50,22 +50,23 @@ private:
   const int DRIVER_ID_;
   bool motorCtrl_;
 
+  TaskHandle_t onReceiveTaskHandle_;
+  uint8_t msgReceived_[6];   // CAN受信メッセージ
+  uint64_t msgReceivedTime_; // CAN受信時刻
+
   RingbufHandle_t ringbuf_;
-
-  static TaskHandle_t onReceiveTaskHandle_;
-  static uint8_t msgReceived_[6];   // CAN受信メッセージ
-  static uint64_t msgReceivedTime_; // CAN受信時刻
+  
+  static std::map<int, Tmotor*> motorIdMap_;  // モータIDをkeyとして当該モータへのポインタを取り出せる連想配列
 
   /**
-   * @brief CAN受信割り込み内で各インスタンスごとに実行する処理. 中身はCANメッセージの転記
-   * @param packetSize 受信したバイト数
+   * @brief CAN受信時に各モータが実行するタスク. メッセージのデコードを行い、保持している現在値を更新する
    */
-  void IRAM_ATTR onReceiveMember(int);
+  static void onReceiveTask(void *pvParameters);
 
   /**
-   * @brief CAN受信時に各インスタンスごとに実行するタスク. メッセージのデコードなど(floatを扱うので割り込み内で出来ない)
+   * @brief 
    */
-  void onReceiveTask();
+  void update();
 
   /**
    * @brief モータから受信した位置を積算位置に換算する
@@ -92,10 +93,16 @@ public:
   /// @brief Tmotorオブジェクトを生成する
   /// @param[in] can CANインスタンスへの参照
   /// @param[in] motorId モーターの CAN ID
-  /// @param[in] driverId ドライバーのCAN ID
+  /// @param[in] driverId ドライバーの CAN ID
+  /// @note モータを複数接続する場合、ドライバーIDはすべてのモータで同一にすること
   Tmotor(ESP32BuiltinCAN &, int, int);
 
+  ~Tmotor();
+  
   bool operator<(const Tmotor &rhs) const;
+
+  /// @brief CAN受信割り込みの登録など、初期化処理を行う
+  void init();
 
   /// @brief トルクや速度指令値をCANで送信する
   /// @param[in] pos 位置指令値 [rad] (位置を指令しない場合は0を指定)
@@ -130,7 +137,7 @@ public:
   ///              spd = log.spd;...
   Log logRead();
 
-  /// @brief CAN受信割り込みに登録するコールバック関数
+  /// @brief CAN受信割り込みに登録するコールバック関数. 受信したメッセージを、メッセージ送信元モータのインスタンスに転記し通知を送信する
   /// @param[in] packetSize 受信したバイト数(CAN.onReceiveから渡される)
   /// @param[in] pTmotor Tmotorインスタンスへのポインタ
   /// @return none
