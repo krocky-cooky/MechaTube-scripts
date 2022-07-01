@@ -106,6 +106,16 @@ Tmotor::Log Tmotor::logRead()
   return *item;
 }
 
+Tmotor::Log Tmotor::logPeek()
+{
+  static size_t itemSize = sizeof(Tmotor::Log); // Receive an item from no-split ring buffer
+  Tmotor::Log *item = reinterpret_cast<Tmotor::Log *>(xRingbufferReceive(ringbuf_, &itemSize, pdMS_TO_TICKS(10)));
+  if (item == NULL) { // Check received item
+    printf("Failed to receive item\n");
+  }
+  return *item;
+}
+
 void IRAM_ATTR Tmotor::onReceive(int packetSize, void *pTmotor)
 {
   Tmotor *tmotorPassedByISR = reinterpret_cast<Tmotor *>(pTmotor);

@@ -55,8 +55,8 @@ private:
   uint64_t msgReceivedTime_; // CAN受信時刻
 
   RingbufHandle_t ringbuf_;
-  
-  static std::map<int, Tmotor*> motorIdMap_;  // モータIDをkeyとして当該モータへのポインタを取り出せる連想配列
+
+  static std::map<int, Tmotor *> motorIdMap_; // モータIDをkeyとして当該モータへのポインタを取り出せる連想配列
 
   /**
    * @brief CAN受信時に各モータが実行するタスク. メッセージのデコードを行い、保持している現在値を更新する
@@ -98,7 +98,7 @@ public:
   Tmotor(ESP32BuiltinCAN &, int, int);
 
   ~Tmotor();
-  
+
   bool operator<(const Tmotor &rhs) const;
 
   /// @brief CAN受信割り込みの登録など、初期化処理を行う
@@ -130,12 +130,19 @@ public:
   /// @return ログの個数
   int logAvailable();
 
-  /// @brief バッファにたまっているCAN受信値ログをひとつ返す
+  /// @brief バッファにたまっているCAN受信値ログをひとつ取得する。取得したログはバッファから消去される。ログの存在を logAvailable() で確認後に実行すること
   /// @return ログ
   /// @note usage: Tmotor::Log log = tmotor.logRead();
   ///              pos = log.pos;
   ///              spd = log.spd;...
   Log logRead();
+
+  /// @brief バッファにたまっているCAN受信値ログをひとつ取得する。取得したログはバッファから消去されない。ログの存在を logAvailable() で確認後に実行すること
+  /// @return ログ
+  /// @note usage: Tmotor::Log log = tmotor.logPeek();
+  ///              pos = log.pos;
+  ///              spd = log.spd;...
+  Log logPeek();
 
   /// @brief CAN受信割り込みに登録するコールバック関数. 受信したメッセージを、メッセージ送信元モータのインスタンスに転記し通知を送信する
   /// @param[in] packetSize 受信したバイト数(CAN.onReceiveから渡される)
