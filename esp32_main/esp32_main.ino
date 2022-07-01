@@ -88,9 +88,9 @@ portMUX_TYPE onCanReceiveMux = portMUX_INITIALIZER_UNLOCKED;
 // ここにwifi情報を入力
 const char* ssid = "";
 const char* password =  "";  
-const IPAddress ip();
-const IPAddress gateway();
-const IPAddress subnet();
+const IPAddress ip(192,168,11,17);
+const IPAddress gateway(192,168,11,17);
+const IPAddress subnet(255,255,255,0);
 
 // websocket
 AsyncWebServer server(80);
@@ -100,6 +100,7 @@ AsyncWebSocket ws("/ws");
 char json_data[256];
 
 
+// websocketをイベントごとに処理
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   
   if(type == WS_EVT_CONNECT){
@@ -110,6 +111,17 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
  
     Serial.println("Client disconnected");
   
+  } else if(type == WS_EVT_DATA){
+    handleWebSocketMessage(arg, data, len);
+  }
+}
+
+// クライアントからwebsocketでメッセージを受け取ったら表示
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+  AwsFrameInfo *info = (AwsFrameInfo*)arg;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+    Serial.print("Client Message:");
+    Serial.println((char*)data);
   }
 }
 
