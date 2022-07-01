@@ -139,6 +139,8 @@ void onTimerTask(void *pvParameters)
 void loop()
 {
   // シリアル通信でコマンドを受信し、反映
+  // 現在はつねにserialCommunicationモジュールが保持する指令値を反映するコードになっているので、毎loopごとにcommandが直近のシリアル受信値で上書きされる
+  // retval を確認し、0でないときのみserialCommunicationの値を反映するようにすれば、別の方法(webSocket等)で受信したコマンドと共存できるはず
   char retval = serialCommunication.receive();
   power = serialCommunication.power;
   motorControl = serialCommunication.motorControl;
@@ -148,7 +150,7 @@ void loop()
 
   // CAN受信ログを1secおきにprint
   static unsigned long time_last_print = 0;
-  if (millis() - time_last_print > 1000) {
+  if (millis() - time_last_print > 1000) { // ここの1000をいじるとログ取得間隔を調整可
     time_last_print = millis();
     while (tmotor.logAvailable() > 0) {   // ログが1つ以上たまっていたら
       Tmotor::Log log = tmotor.logRead(); // ログをひとつ取得
