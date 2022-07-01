@@ -18,7 +18,6 @@ Tmotor::Tmotor(ESP32BuiltinCAN &can, int motorId, int driverId)
     msgReceivedTime_(0), // CAN受信時刻
     posSent(0.0), spdSent(0.0), kpSent(0.0), kdSent(0.0), trqSent(0.0), posReceived(0.0), spdReceived(0.0), trqReceived(0.0), integratingAngle(0.0)
 {
-  motorIdMap_[MOTOR_ID_] = this; // モータID一覧に自身を登録
 }
 
 Tmotor::~Tmotor()
@@ -28,7 +27,8 @@ Tmotor::~Tmotor()
 
 void Tmotor::init()
 {
-  Serial.printf("[Tmotor] init motorIdMap_.size()=%d\n", motorIdMap_.size());
+  motorIdMap_[MOTOR_ID_] = this; // モータID一覧に自身を登録
+
   CAN_.clear_callback();               // 登録されているCAN受信割り込み関数をすべて削除(CAN受信割り込みに登録する関数は1つだけとする)
   CAN_.set_callback(&onReceive, this); // onReceive関数を、いま新たに生成した自身を指すポインタthisとともにコールバック登録
 
@@ -110,13 +110,9 @@ void IRAM_ATTR Tmotor::onReceive(int packetSize, void *pTmotor)
 {
   Tmotor *tmotorPassedByISR = reinterpret_cast<Tmotor *>(pTmotor);
   static uint8_t msgBuf[6];
-  Serial.println("[Tmotor] onReceive");
   tmotorPassedByISR->msgReceivedTime_ = micros(); // 受信時刻を取得
-  Serial.println("[Tmotor] onReceive a");
-  if (tmotorPassedByISR->CAN_.available()) { // CANメッセージが到着していれば読み取る
-    Serial.println("[Tmotor] onReceive b");
+  if (tmotorPassedByISR->CAN_.available()) {      // CANメッセージが到着していれば読み取る
     int id = tmotorPassedByISR->CAN_.packetId();
-    Serial.println("[Tmotor] onReceive c");
     if (id == tmotorPassedByISR->DRIVER_ID_) { // 宛先IDを念のため確認し、ドライバーIDと一致すれば転記
       for (int i = 0; i < 6; i++) {
         msgBuf[i] = tmotorPassedByISR->CAN_.read();
@@ -143,7 +139,6 @@ void Tmotor::onReceiveTask(void *pTmotor)
 
 void Tmotor::update()
 {
-  Serial.println("[update] a");
   int motorId;
   float pos, spd, trq;
   unpackReply(msgReceived_, &motorId, &pos, &spd, &trq); // 受信メッセージをunpack
@@ -158,7 +153,7 @@ void Tmotor::update()
     log.spd = spd;
     log.trq = trq;
     log.integratingAngle = integratingAngle;
-    xRingbufferSend(ringbuf_, &log, sizeof(Log), pdMS_TO_TICKS(10));
+    xRingbufferSend(ringbuf_, &log, sizeof(Log), pdMS_TO_TICKS(1));
   }
 }
 

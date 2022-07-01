@@ -20,8 +20,8 @@
 #define PIN_HANDSWITCH 35
 #define KP 0.1
 #define KD 1.0
-#define TAU_TRQ 1.0            // 一次遅れ系によるトルク指令の時定数[s]
-#define TAU_SPD 1.0            // 一次遅れ系による速度指令の時定数[s]
+#define TAU_TRQ 1.0             // 一次遅れ系によるトルク指令の時定数[s]
+#define TAU_SPD 1.0             // 一次遅れ系による速度指令の時定数[s]
 #define CONTROL_INTERVAL 100000 // 制御周期[us]
 
 // 閾値等
@@ -111,13 +111,13 @@ void onTimerTask(void *pvParameters)
     if (tmotor.getMotorControl()) {
       if (mode == Mode::TrqCtrl) {     // トルク制御モードのとき
         firstOrderDelaySpd.clear(0.0); // 速度の1次遅れ計算用変数は使わないのでリセット
-        if (handSwitch) { // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
+        if (handSwitch) {              // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
           trqSend = firstOrderDelayTrq.update(trqCommand, CONTROL_INTERVAL / 1e6);
         } else {
           trqSend = 0.0;
           firstOrderDelayTrq.clear(0.0);
         }
-        // tmotor.sendCommand(0, 0, 0, 0, trqSend); // 送信
+        tmotor.sendCommand(0, 0, 0, 0, trqSend); // 送信
 
       } else if (mode == Mode::SpdCtrl) { // 速度指令モードのとき
         firstOrderDelayTrq.clear(0.0);    // トルクの1次遅れ計算用変数は使わないのでリセット
@@ -126,15 +126,13 @@ void onTimerTask(void *pvParameters)
         } else {
           spdSend = firstOrderDelaySpd.update(0.0, CONTROL_INTERVAL / 1e6);
         }
-        // tmotor.sendCommand(0, spdSend, KP, KD, 0); // 送信
+        tmotor.sendCommand(0, spdSend, KP, KD, 0); // 送信
       }
 
     } else { // モータ制御モードに入っていないとき、全ての変数を0にリセットしておく
       firstOrderDelayTrq.clear(0.0);
       firstOrderDelaySpd.clear(0.0);
     }
-
-    Serial.printf("{\"trqSend\": %.3f, \"spdSend\": %.3f, \"torque_received\":%.3f, \"speed_received\":%.3f, \"position_received\":%.3f, \"integratingAngle\":%.3f}\n", trqSend, spdSend, tmotor.trqReceived, tmotor.spdReceived, tmotor.posReceived, tmotor.integratingAngle);
   }
 }
 
@@ -152,8 +150,8 @@ void loop()
   static unsigned long time_last_print = 0;
   if (millis() - time_last_print > 1000) {
     time_last_print = millis();
-    while (tmotor.logAvailable() > 0) {
-      Tmotor::Log log = tmotor.logRead();
+    while (tmotor.logAvailable() > 0) {   // ログが1つ以上たまっていたら
+      Tmotor::Log log = tmotor.logRead(); // ログをひとつ取得
       Serial.printf(
           "{\"timestamp\": %d, \"trq\":%.3f, \"spd\":%.3f, \"pos\":%.3f, \"integratingAngle\": %.3f}\n",
           log.timestamp,
