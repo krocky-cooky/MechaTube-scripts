@@ -1,16 +1,16 @@
 #include <Arduino.h>
 #include <CAN.h>
-#include <math.h>
-#include <stdio.h>
-
 #include <ESPAsyncWebServer.h>
 #include <WiFi.h>
+#include <math.h>
+#include <stdio.h>
 
 //定数等
 #include "esp_task.h"
 
 #include "Filter.hpp"
 #include "Mode.hpp"
+#include "Secrets.h"
 #include "SerialCommunication.hpp"
 #include "Tmotor.h"
 #include "TouchSwitch.hpp"
@@ -55,49 +55,17 @@ TouchSwitch touchSwitch(PIN_HANDSWITCH, HANDSWITCH_VOLTAGE_THRESHOLD);
 FirstLPF firstOrderDelayTrq;
 FirstLPF firstOrderDelaySpd;
 
-void IRAM_ATTR onTimer()
-{
-  BaseType_t taskWoken;
-  xTaskNotifyFromISR(onTimerTaskHandle, 0, eNoAction, &taskWoken); // おまじない。onTimerTaskに通知を送信する
-}
-
-// ここにwifi情報を入力
-const char *ssid = "801ZTa-BB8DB1";
-const char *password = "1061239a";
-const IPAddress ip(192, 168, 128, 17);
-const IPAddress gateway(192, 168, 128, 17);
-const IPAddress subnet(255, 255, 255, 0);
-
-// websocket
+// websocketのオブジェクト
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 // websocket通信で送るjsonのための文字データ
 char json_data[256];
 
-// websocketをイベントごとに処理
-void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+void IRAM_ATTR onTimer()
 {
-
-  if (type == WS_EVT_CONNECT) {
-
-    Serial.println("Websocket client connection received");
-  } else if (type == WS_EVT_DISCONNECT) {
-
-    Serial.println("Client disconnected");
-  } else if (type == WS_EVT_DATA) {
-    handleWebSocketMessage(arg, data, len);
-  }
-}
-
-// クライアントからwebsocketでメッセージを受け取ったら表示
-void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
-{
-  AwsFrameInfo *info = (AwsFrameInfo *)arg;
-  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-    Serial.print("Client Message:");
-    Serial.println((char *)data);
-  }
+  BaseType_t taskWoken;
+  xTaskNotifyFromISR(onTimerTaskHandle, 0, eNoAction, &taskWoken); // おまじない。onTimerTaskに通知を送信する
 }
 
 void setup()
@@ -117,22 +85,19 @@ void setup()
   tmotor.init();
 
   // WiFIのsetup
-  if (!WiFi.config(ip, gateway, subnet)) {
+  if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
     Serial.println("Failed to configure!");
   }
-
-  WiFi.begin(ssid, password);
-
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println("Connecting to WiFi..");
   }
-
   Serial.println(WiFi.localIP());
 
+  // webserverのセットアップ
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
-
   server.begin();
 
   Serial.println("[setup] setup comleted");
@@ -224,6 +189,9 @@ void loop()
           log.spd,
           log.pos,
           log.integratingAngle);
+      // ログをwebSocketで配信
+      sprintf(json_data, "{\"torque\":%.3f, \"speed\":%.3f, \"position\":%.3f, \"integratingAngl\":%.3f}", log.trq, log.spd, log.pos, log.integratingAngle);
+      ws.textAll(json_data);
     }
   }
 
@@ -231,9 +199,6 @@ void loop()
   // float voltageOfConverter = analogRead(34) * 3.3 * 21 / 4096; //コンバータの電圧の値
   // Serial.printf("the voltage of converter = %f\n", voltageOfConverter);
 
-  // can通信の受信値をwebSocketで配信
-  sprintf(json_data, "{\"torque_received\":%f, \"speed_received\":%f, \"position_received\":%f, \"rotationAngleFromInitialPosition\":%f}", torqueReceived, speedReceived, positionReceived, rotationAngleFromInitialPosition);
-  ws.textAll(json_data);
   delay(100);
 }
 
@@ -267,5 +232,30 @@ void setControl(bool command)
       tmotor.sendMotorControl(0);
       Serial.println("[setControl] motor control mode: OFF");
     }
+  }
+}
+
+// websocketをイベントごとに処理
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+{
+
+  if (type == WS_EVT_CONNECT) {
+
+    Serial.println("Websocket client connection received");
+  } else if (type == WS_EVT_DISCONNECT) {
+
+    Serial.println("Client disconnected");
+  } else if (type == WS_EVT_DATA) {
+    handleWebSocketMessage(arg, data, len);
+  }
+}
+
+// クライアントからwebsocketでメッセージを受け取ったら表示
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
+{
+  AwsFrameInfo *info = (AwsFrameInfo *)arg;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+    Serial.print("Client Message:");
+    Serial.println((char *)data);
   }
 }
