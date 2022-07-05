@@ -19,17 +19,17 @@
 #define P_MAX 12.5
 
 //閾値等
-#define FORCE_THRESHOLD_OF_HANDSWICH 10.0                          //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
+#define FORCE_THRESHOLD_OF_HANDSWICH 10.0                              //手元スイッチのオンオフを識別するための、スイッチにかかる力の閾値 [N]
 #define THRESHOLD_OF_MOTOR_SPEED_FOR_DETERMINING_ECCENTRIC_MOTION 0.33 //エキセン動作を判定するための、モータの回転速度の閾値 [rad/s]
-#define MAX_TORQUE 4.0                                                //許容する最大トルク [Nm]
-#define MAX_SPEED 6.5                                                 //許容する最大回転速さ [rad/s]
-#define MAX_LOGNUM 1024                                               //筋力測定の最大ログ数
-#define THRESHOLD_OF_COUNT_FOR_SPOTTER_MODE 30.0 //スポッターモードを行うかどうかの閾値
-#define THRESHOLD_OF_SPEED_FOR_SPOTTER_MODE 0.7 //スポッターモードのためのカウントをする際の速さの閾値
+#define MAX_TORQUE 4.0                                                 //許容する最大トルク [Nm]
+#define MAX_SPEED 6.5                                                  //許容する最大回転速さ [rad/s]
+#define MAX_LOGNUM 1024                                                //筋力測定の最大ログ数
+#define THRESHOLD_OF_COUNT_FOR_SPOTTER_MODE 30.0                       //スポッターモードを行うかどうかの閾値
+#define THRESHOLD_OF_SPEED_FOR_SPOTTER_MODE 0.7                        //スポッターモードのためのカウントをする際の速さの閾値
 
 // フラグ等
 bool torqueCtrlMode = 0; // 速度制御したいとき0,トルク制御したいとき1になるフラグ
-bool spotterMode = 0; //スポッターモードのフラグ
+bool spotterMode = 0;    //スポッターモードのフラグ
 
 // ユーザの手元にあるスイッチなど、トルク出力をON/OFFする指令
 bool handSwitch = false;
@@ -41,8 +41,8 @@ float torqueCommand = 0.0;                       // トルク指令値 [Nm]
 float speedCommand = 0.0;                        // 速度指令値 [rad/s]
 float increaseOfToraueForEccentricMotion = 0.0;  // エキセン動作時に増加するトルク量 [Nm]
 float maxSpeedWhileConcentricMotion = MAX_SPEED; // コンセン動作時に許容する最大回転速さ [rad/s], アイソキネティックトレーニング時は指定値にし、そうでない時はMAX_SPEEDに合わせる
-int countForSpotterMode = 0; //スポッターモードのためのカウント。これが閾値以上になったら補助開始
-float decreaseOfTorquePerCount = 0.5; //スポッターモードの時、1カウントあたりどれくらいトルクを減らすか
+int countForSpotterMode = 0;                     //スポッターモードのためのカウント。これが閾値以上になったら補助開始
+float decreaseOfTorquePerCount = 0.5;            //スポッターモードの時、1カウントあたりどれくらいトルクを減らすか
 
 // 実際にモータやコンバータに送信している指令値
 bool powerSending = false;
@@ -65,9 +65,9 @@ volatile float previousPositionReceived = 0.0;                  //直前に受�
 volatile float numberOfTimesYouCrossedOverFromPmaxToPmin = 0.0; //位置=P_MAXから位置が増加して位置=P_MINに移動した回数。逆向きで位置=P_MIMから位置=P_MAXに移動したら-1する。例えば、P_MAX=12.5, P_MIN=-12.5の時、positionReceived=10から、回転位置が5増えると、positionReceivedは15ではなく-10になる。
 
 // 筋力測定用
-unsigned long timeLog[MAX_LOGNUM];  // 時刻の保存用配列
-float torqueLog[MAX_LOGNUM];  // トルクのログ保存用配列
-float positionLog[MAX_LOGNUM];  // 位置のログ保存用配列
+unsigned long timeLog[MAX_LOGNUM]; // 時刻の保存用配列
+float torqueLog[MAX_LOGNUM];       // トルクのログ保存用配列
+float positionLog[MAX_LOGNUM];     // 位置のログ保存用配列
 
 //初期位置からの回転角
 //例えば、P_MAX=12.5, P_MIN=-12.5の時、positionReceived=10から、回転位置が5増えると、positionReceivedは15ではなく-10になる
@@ -84,13 +84,12 @@ float rangeOfTorqueChange = 0.0;                      //ピーク位置に対し
 // CAN受信割込みとmainloopの双方からアクセスする変数の排他処理
 portMUX_TYPE onCanReceiveMux = portMUX_INITIALIZER_UNLOCKED;
 
-
 // ここにwifi情報を入力
-const char* ssid = "";
-const char* password =  "";  
-const IPAddress ip(192,168,11,17);
-const IPAddress gateway(192,168,11,17);
-const IPAddress subnet(255,255,255,0);
+const char *ssid = "801ZTa-BB8DB1";
+const char *password = "1061239a";
+const IPAddress ip(192, 168, 128, 17);
+const IPAddress gateway(192, 168, 128, 17);
+const IPAddress subnet(255, 255, 255, 0);
 
 // websocket
 AsyncWebServer server(80);
@@ -99,29 +98,34 @@ AsyncWebSocket ws("/ws");
 // websocket通信で送るjsonのための文字データ
 char json_data[256];
 
-
 // websocketをイベントごとに処理
-void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
-  
-  if(type == WS_EVT_CONNECT){
-  
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+{
+
+  if (type == WS_EVT_CONNECT)
+  {
+
     Serial.println("Websocket client connection received");
-     
-  } else if(type == WS_EVT_DISCONNECT){
- 
+  }
+  else if (type == WS_EVT_DISCONNECT)
+  {
+
     Serial.println("Client disconnected");
-  
-  } else if(type == WS_EVT_DATA){
+  }
+  else if (type == WS_EVT_DATA)
+  {
     handleWebSocketMessage(arg, data, len);
   }
 }
 
 // クライアントからwebsocketでメッセージを受け取ったら表示
-void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
-  AwsFrameInfo *info = (AwsFrameInfo*)arg;
-  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
+{
+  AwsFrameInfo *info = (AwsFrameInfo *)arg;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
+  {
     Serial.print("Client Message:");
-    Serial.println((char*)data);
+    Serial.println((char *)data);
   }
 }
 
@@ -151,24 +155,25 @@ void setup()
   unpackReply(canReceivedMsg, &positionReceived, &speedReceived, &torqueReceived);
   previousPositionReceived = positionReceived;
 
-  
   // WiFIのsetup
-   if (!WiFi.config(ip,gateway,subnet)){
-       Serial.println("Failed to configure!");
-   }
-   
+  if (!WiFi.config(ip, gateway, subnet))
+  {
+    Serial.println("Failed to configure!");
+  }
+
   WiFi.begin(ssid, password);
-  
-  while (WiFi.status() != WL_CONNECTED) {
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(1000);
     Serial.println("Connecting to WiFi..");
   }
-  
+
   Serial.println(WiFi.localIP());
-  
+
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
-  
+
   server.begin();
 
   Serial.println("[setup] setup comleted");
@@ -176,7 +181,7 @@ void setup()
 
 void loop()
 {
- 
+
   // 開始時刻の記録
   timePrev = timeNow;
   timeNow = micros();
@@ -216,7 +221,7 @@ void loop()
   sprintf(json_data, "{\"torque_received\":%f, \"speed_received\":%f, \"position_received\":%f, \"rotationAngleFromInitialPosition\":%f}", torqueReceived, speedReceived, positionReceived, rotationAngleFromInitialPosition);
   ws.textAll(json_data);
   delay(500);
-  
+
   //初期位置からの回転角を記録
   //位置=P_MAXから位置が増加して位置=P_MINに移動した回数をカウントする
   //速度が正なのに、位置の符号が正から負に変化したら、位置=P_MAXから位置が増加して位置=P_MINに移動していると判断
@@ -235,7 +240,7 @@ void loop()
   }
   rotationAngleFromInitialPosition = positionReceived + (P_MAX - P_MIN) * numberOfTimesYouCrossedOverFromPmaxToPmin;
   Serial.printf("rotationAngleFromInitialPosition = %f\n", rotationAngleFromInitialPosition);
-  
+
   Serial.printf("handSwitch = %d\n", handSwitch);
 
   // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
@@ -267,23 +272,29 @@ void loop()
       //トレーナーの補助機能(スポッターモード)
       //速さが閾値未満なら、スポッターモードをするかどうかのカウントを増やす
       //速さが閾値を超えたらカウントをリセット
-      if (fabsf(speedReceived) < THRESHOLD_OF_SPEED_FOR_SPOTTER_MODE){
-        countForSpotterMode+=1;
-      }else{
-        countForSpotterMode=0;
+      if (fabsf(speedReceived) < THRESHOLD_OF_SPEED_FOR_SPOTTER_MODE)
+      {
+        countForSpotterMode += 1;
+      }
+      else
+      {
+        countForSpotterMode = 0;
       }
       //カウントが閾値を超えたらスポッターモードをオンにする
-      if (countForSpotterMode > THRESHOLD_OF_COUNT_FOR_SPOTTER_MODE){
+      if (countForSpotterMode > THRESHOLD_OF_COUNT_FOR_SPOTTER_MODE)
+      {
         spotterMode = 1;
       }
       //トルク指令値が減少量未満なら、カウントとフラグをリセット
       //例えばt=0を指令すれば、スポッターモードとそのカウントが解除・リセットされる
-      if (torqueSending < decreaseOfTorquePerCount){
-        countForSpotterMode=0;
+      if (torqueSending < decreaseOfTorquePerCount)
+      {
+        countForSpotterMode = 0;
         spotterMode = 0;
       }
       //スポッターモードならトルク減少させる
-      if (spotterMode){
+      if (spotterMode)
+      {
         torqueSending = torqueSending - decreaseOfTorquePerCount;
       }
       Serial.printf("{\"countForSpotterMode\":%d, \"torqueSending\":%f, \"spotterMode\":%d}\n", countForSpotterMode, torqueSending, spotterMode);
@@ -355,20 +366,21 @@ void loop()
       can_sendCommand(0.0, speedSending, 0.0, KD, 0.0);
 
       // 筋力測定用コード
-      static size_t i_measure = 0;  // 筋力測定におけるサンプル番号
-      timeLog[i_measure] = micros();  // 現在時刻[us]を記録
-      torqueLog[i_measure] = torqueReceived;  // トルクを記録
-      positionLog[i_measure] = positionReceived;  // 位置を記録
-      i_measure++;  // サンプルを次へ
-      if (i_measure > MAX_LOGNUM) {  // 最大個数を超えたらインデックスをリセットし、print
+      static size_t i_measure = 0;               // 筋力測定におけるサンプル番号
+      timeLog[i_measure] = micros();             // 現在時刻[us]を記録
+      torqueLog[i_measure] = torqueReceived;     // トルクを記録
+      positionLog[i_measure] = positionReceived; // 位置を記録
+      i_measure++;                               // サンプルを次へ
+      if (i_measure > MAX_LOGNUM)
+      { // 最大個数を超えたらインデックスをリセットし、print
         i_measure = 0;
         Serial.println("[");
-        for (int i_print = 0; i_print < MAX_LOGNUM; i_print++) {
+        for (int i_print = 0; i_print < MAX_LOGNUM; i_print++)
+        {
           Serial.printf("{time: %d, position: %f, torque: %f},\n", timeLog[i_print], positionLog[i_print], torqueLog[i_print]);
         }
         Serial.println("]");
       }
-      
     }
     // モータ制御モードに入っていないとき、全ての変数を0にリセットしておく
   }
