@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script type="text/javascript">
+
+        const ws = new WebSocket("ws://192.168.128.17/ws");
+
+        ws.onopen = function () {
+            alert("Connection opened");
+        };
+
+        ws.onclose = function () {
+            alert("Connection closed");
+        };
+
+        ws.onmessage = function (event) {
+
+            const p = document.createElement('p');
+            p.textContent = event.data;
+            document.body.appendChild(p);
+
+            ws.send('succesfully get data from esp32');
+        };
+    </script>
+
+</head>
+
+<body>
+</body>
+
+</html>

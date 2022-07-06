@@ -1,12 +1,16 @@
 #include <Arduino.h>
 #include <CAN.h>
+#include <ESPAsyncWebServer.h>
+#include <WiFi.h>
 #include <math.h>
 #include <stdio.h>
 
+//定数等
 #include "esp_task.h"
 
 #include "Filter.hpp"
 #include "Mode.hpp"
+#include "Secrets.h"
 #include "SerialCommunication.hpp"
 #include "Tmotor.h"
 #include "TouchSwitch.hpp"
@@ -51,6 +55,13 @@ TouchSwitch touchSwitch(PIN_HANDSWITCH, HANDSWITCH_VOLTAGE_THRESHOLD);
 FirstLPF firstOrderDelayTrq;
 FirstLPF firstOrderDelaySpd;
 
+// websocketのオブジェクト
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+
+// websocket通信で送るjsonのための文字データ
+char json_data[256];
+
 void IRAM_ATTR onTimer()
 {
   BaseType_t taskWoken;
@@ -73,6 +84,23 @@ void setup()
 
   tmotor.init();
 
+  // WiFIのsetup
+  if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
+    Serial.println("Failed to configure!");
+  }
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi..");
+  }
+  Serial.println(WiFi.localIP());
+
+  // webserverのセットアップ
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
+  server.begin();
+
+  Serial.println("[setup] setup comleted");
   firstOrderDelayTrq.setTau(TAU_TRQ); // トルクの1次遅れフィルタを宣言
   firstOrderDelaySpd.setTau(TAU_SPD); // 速度の1次遅れフィルタを宣言
 
@@ -161,12 +189,16 @@ void loop()
           log.spd,
           log.pos,
           log.integratingAngle);
+      // ログをwebSocketで配信
+      sprintf(json_data, "{\"torque\":%.3f, \"speed\":%.3f, \"position\":%.3f, \"integratingAngl\":%.3f}", log.trq, log.spd, log.pos, log.integratingAngle);
+      ws.textAll(json_data);
     }
   }
 
   // コンバータの電圧を表示
   // float voltageOfConverter = analogRead(34) * 3.3 * 21 / 4096; //コンバータの電圧の値
   // Serial.printf("the voltage of converter = %f\n", voltageOfConverter);
+
   delay(100);
 }
 
@@ -200,5 +232,30 @@ void setControl(bool command)
       tmotor.sendMotorControl(0);
       Serial.println("[setControl] motor control mode: OFF");
     }
+  }
+}
+
+// websocketをイベントごとに処理
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+{
+
+  if (type == WS_EVT_CONNECT) {
+
+    Serial.println("Websocket client connection received");
+  } else if (type == WS_EVT_DISCONNECT) {
+
+    Serial.println("Client disconnected");
+  } else if (type == WS_EVT_DATA) {
+    handleWebSocketMessage(arg, data, len);
+  }
+}
+
+// クライアントからwebsocketでメッセージを受け取ったら表示
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
+{
+  AwsFrameInfo *info = (AwsFrameInfo *)arg;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+    Serial.print("Client Message:");
+    Serial.println((char *)data);
   }
 }
