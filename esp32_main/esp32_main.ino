@@ -33,7 +33,7 @@
 #define MAX_LOGNUM 1024                   // 筋力測定の最大ログ数
 
 // フラグ等
-Mode mode = Mode::SpdCtrl; // 制御対象を表すフラグ. Mode.hppに一覧で記載
+Mode modeCommand = Mode::SpdCtrl; // 制御対象を表すフラグ. Mode.hppに一覧で記載
 
 // 指令値
 bool power = false;        // コンバータ電源ON/OFF
@@ -43,6 +43,7 @@ float spdCommand = 0.0;    // 速度指令値[rad/s]
 float kpCommand = 0.0;     // 位置フィードバックゲイン
 float kdCommand = 0.0;     // 速度フィードバックゲイン
 float trqCommand = 0.0;    // トルク指令値[Nm]
+float spdLimit = 0.0;      // 速度上限値[rad/s]
 
 hw_timer_t *timer0 = NULL;
 TaskHandle_t onTimerTaskHandle = NULL;
@@ -134,27 +135,43 @@ void onTimerTask(void *pvParameters)
     bool handSwitch = touchSwitch.getState();
     float trqSend = 0.0;
     float spdSend = 0.0;
+    Mode modeSend = Mode::SpdCtrl;
 
     // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
     if (tmotor.getMotorControl()) {
-      if (mode == Mode::TrqCtrl) {     // トルク制御モードのとき
-        firstOrderDelaySpd.clear(0.0); // 速度の1次遅れ計算用変数は使わないのでリセット
-        if (handSwitch) {              // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
-          trqSend = firstOrderDelayTrq.update(trqCommand, CONTROL_INTERVAL / 1e6);
-        } else {
-          trqSend = 0.0;
-          firstOrderDelayTrq.clear(0.0);
-        }
-        tmotor.sendCommand(0, 0, 0, 0, trqSend); // 送信
+      // 速度超過の判定
+      static bool overSpeed = false;
+      if (!overSpeed && abs(tmotor.spdReceived) > spdLimit + 0.5) { // 速度制限値を0.5rad/s以上超過でoverspeedフラグを立てる
+        overSpeed = true;
+      } else if (overSpeed && abs(tmotor.spdReceived) < spdLimit) { // 速度制限値を下回ったらoverspeedフラグを解除
+        overSpeed = false;
+      }
 
-      } else if (mode == Mode::SpdCtrl) { // 速度指令モードのとき
-        firstOrderDelayTrq.clear(0.0);    // トルクの1次遅れ計算用変数は使わないのでリセット
-        if (handSwitch) {
-          spdSend = firstOrderDelaySpd.update(spdCommand, CONTROL_INTERVAL / 1e6);
-        } else {
-          spdSend = firstOrderDelaySpd.update(0.0, CONTROL_INTERVAL / 1e6);
+      if (overSpeed) {                                        // 速度超過フラグが出ている場合、速度を上限までに制約する
+        spdSend = absConstrain(tmotor.spdReceived, spdLimit); // 符号を保って絶対値だけspdLimitへ
+        tmotor.sendCommand(0, spdSend, KP, KD, 0);
+      } else { // 速度超過フラグが出ていないとき
+        // 制御モード選択
+        if (modeSend == Mode::TrqCtrl) { // トルク制御モードのとき
+          firstOrderDelaySpd.clear(0.0); // 速度の1次遅れ計算用変数は使わないのでリセット
+          if (handSwitch) {              // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
+            trqSend = firstOrderDelayTrq.update(trqCommand, CONTROL_INTERVAL / 1e6);
+          } else {
+            trqSend = 0.0;
+            firstOrderDelayTrq.clear(0.0);
+          }
+          tmotor.sendCommand(0, 0, 0, 0, trqSend); // 送信
+
+        } else if (modeSend == Mode::SpdCtrl) { // 速度指令モードのとき
+          firstOrderDelayTrq.clear(0.0);        // トルクの1次遅れ計算用変数は使わないのでリセット
+          if (handSwitch) {
+            spdSend = firstOrderDelaySpd.update(spdCommand, CONTROL_INTERVAL / 1e6);
+          } else {
+            spdSend = firstOrderDelaySpd.update(0.0, CONTROL_INTERVAL / 1e6);
+          }
+          spdSend = absConstrain(spdCommand, spdLimit - 0.5);
+          tmotor.sendCommand(0, spdSend, KP, KD, 0); // 送信
         }
-        tmotor.sendCommand(0, spdSend, KP, KD, 0); // 送信
       }
 
     } else { // モータ制御モードに入っていないとき、全ての変数を0にリセットしておく
@@ -172,7 +189,7 @@ void loop()
   char retval = serialCommunication.receive();
   power = serialCommunication.power;
   motorControl = serialCommunication.motorControl;
-  mode = serialCommunication.mode;
+  modeCommand = serialCommunication.mode;
   trqCommand = serialCommunication.trq;
   spdCommand = serialCommunication.spd;
 
@@ -257,5 +274,19 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
     Serial.print("Client Message:");
     Serial.println((char *)data);
+  }
+}
+
+// valの絶対値がabsLmitを超えているとき、絶対値をlimitに制約して返す
+// 例 absConstrain(2.0, 1.0) = 1.0, absConstrain(-3.0, 1.0) = -1.0
+float absConstrain(float val, float absLimit)
+{
+  if (absLimit < 0.0) { // エラー
+    return 0.0;
+  }
+  if (val > 0) {
+    return min(val, absLimit);
+  } else {
+    return -min(-val, absLimit);
   }
 }
