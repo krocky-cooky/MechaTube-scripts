@@ -1,12 +1,8 @@
+#include "esp_task.h"
 #include <Arduino.h>
 #include <CAN.h>
 #include <ESPAsyncWebServer.h>
 #include <WiFi.h>
-#include <math.h>
-#include <stdio.h>
-
-//定数等
-#include "esp_task.h"
 
 #include "Filter.hpp"
 #include "Mode.hpp"
@@ -14,6 +10,7 @@
 #include "SerialCommunication.hpp"
 #include "Tmotor.h"
 #include "TouchSwitch.hpp"
+#include "WiFiSetup.hpp"
 
 // 定数等
 #define MOTOR_ID 64
@@ -59,6 +56,10 @@ FirstLPF firstOrderDelaySpd;
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
+DNSServer dnsServer;
+IPAddress apIp(192, 168, 1, 1);
+WiFiSetup wifiSetup(server, dnsServer);
+
 // websocket通信で送るjsonのための文字データ
 char json_data[256];
 
@@ -83,7 +84,7 @@ void setup()
   }
 
   tmotor.init();
-
+  /*
   // WiFIのsetup
   if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
     Serial.println("Failed to configure!");
@@ -94,13 +95,16 @@ void setup()
     Serial.println("Connecting to WiFi..");
   }
   Serial.println(WiFi.localIP());
+  */
+  wifiSetup.clear();
+  wifiSetup.config("ESP32AP", "12345678", apIp);
+  wifiSetup.connect();
 
   // webserverのセットアップ
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
   server.begin();
 
-  Serial.println("[setup] setup comleted");
   firstOrderDelayTrq.setTau(TAU_TRQ); // トルクの1次遅れフィルタを宣言
   firstOrderDelaySpd.setTau(TAU_SPD); // 速度の1次遅れフィルタを宣言
 
