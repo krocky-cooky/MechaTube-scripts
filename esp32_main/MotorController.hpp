@@ -12,7 +12,7 @@ Tmotor tmotor;
 MotorController motor(tmotor);
 
 void setup() {
-  motor.init();  // 初期化
+  motor.init(0.2, 0.1);  // 初期化。引数は1つめがPゲイン、2つめがIゲイン
 }
 
 void loop() {
@@ -52,12 +52,14 @@ public:
   MotorController(Tmotor &tmotor);
 
   /**
-   * @brief 初期化処理
+   * @brief 変数初期化処理。setup()内と、制御を完全にリセットしたいときに実行する
+   * @param spdKp 定速制御時のPゲイン
+   * @param spdKi 定速制御時のIゲイン
    */
-  void init();
+  void init(float spdKp, float spdKi);
 
   /**
-   * @brief トルク制御を開始する。開始したときの指令値初期値は0Nm
+   * @brief 定トルク制御を開始する
    */
   void startTrqCtrl();
 
@@ -68,14 +70,14 @@ public:
   void setTrqRef(float trqRef);
 
   /**
-   * @brief 速度上限値を設定・変更する。トルク制御中のみ有効
+   * @brief 定トルク制御中の、速度上限値を設定・変更する
    * @param spdLimit 速度上限値[rad/s]。トルク制御中にこの速度を超えると、トルク指令値を減少させはじめる
    * @param spdMax 速度最大値[rad/s]。この速度でトルク指令値はゼロになる
    */
   void setSpdLimit(float spdLimit, float spdMax);
 
   /**
-   * @brief 速度制御を開始する。開始したときの速度初期値は0rad/s
+   * @brief 定速制御を開始する
    */
   void startSpdCtrl();
 
@@ -84,6 +86,12 @@ public:
    * @param spdRef 速度指令値[rad/s]
    */
   void setSpdRef(float spdRef);
+
+  /**
+   * @brief 定速制御中の、トルクの上限値を指定する
+   * @param trqLimit トルク上限値。モータのトルクがこの値を超えると、定速制御を一次的にやめて、これ以上トルクが出ないようにする
+   */
+  void setTrqLimit(float trqLimit);
 
   /**
    * @brief 制御を停止する
@@ -96,7 +104,6 @@ public:
    */
   void update(unsigned long interval);
 
-  float calculatedTrq_;  // 制御器で計算されたトルク[Nm](ログ出力のためpublicにしている。要変更)
 
 private:
   enum class CtrlObject // 制御対象
@@ -120,6 +127,7 @@ private:
   float spdRef_;      // 速度指令値[rad/s]
   float trqLimit_;    // 速度制御中のトルク最大値[Nm]。速度制御中のトルクはこの値より大きくならない
   float spdDevIntegral_; // 速度のPID制御で使う、速度偏差の積分値
+  float calculatedTrq_;  // 制御器で計算されたトルク[Nm](ログ出力のためpublicにしている。要変更)
 
   void clear_(); // 制御器の内部変数や指令値を初期化する。上限値は初期化されない
 };

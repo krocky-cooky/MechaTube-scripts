@@ -24,8 +24,8 @@
 #define PIN_POWER 26
 #define PIN_HANDSWITCH 35
 #define KD 1.0
-#define TAU_TRQ 1.0             // 一次遅れ系によるトルク指令の時定数[s]
-#define TAU_SPD 1.0             // 一次遅れ系による速度指令の時定数[s]
+// #define TAU_TRQ 1.0            // 一次遅れ系によるトルク指令の時定数[s]
+// #define TAU_SPD 1.0            // 一次遅れ系による速度指令の時定数[s]
 #define CONTROL_INTERVAL 10000 // 制御周期[us]
 
 // 閾値等
@@ -33,7 +33,7 @@
 #define MAX_LOGNUM 1024                   // 筋力測定の最大ログ数
 
 // フラグ等
-Mode modeCommand = Mode::SpdCtrl; // 制御対象を表すフラグ. Mode.hppに一覧で記載
+Mode modeCommand = Mode::TrqCtrl; // 制御対象を表すフラグ. Mode.hppに一覧で記載
 
 // 指令値
 bool power = false;        // コンバータ電源ON/OFF
@@ -85,6 +85,7 @@ void setup()
   }
 
   tmotor.init();
+  motor.init(0.8, 0.8); // motor.init(Pゲイン、Iゲイン)  // 220806:Pゲイン1.0以上だと速度ゼロ指令時に震えた
   /*
   // WiFIのsetup
   // if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
@@ -104,8 +105,8 @@ void setup()
   */
 
   Serial.println("[setup] setup comleted");
-  firstOrderDelayTrq.setTau(TAU_TRQ); // トルクの1次遅れフィルタを宣言
-  firstOrderDelaySpd.setTau(TAU_SPD); // 速度の1次遅れフィルタを宣言
+  // firstOrderDelayTrq.setTau(TAU_TRQ); // トルクの1次遅れフィルタを宣言
+  // firstOrderDelaySpd.setTau(TAU_SPD); // 速度の1次遅れフィルタを宣言
 
   xTaskCreatePinnedToCore(onTimerTask, "onTimerTask", 8192, NULL, ESP_TASK_TIMER_PRIO - 1, &onTimerTaskHandle, APP_CPU_NUM); // タイマー割り込みで実行するタスクを登録
 
@@ -144,8 +145,12 @@ void onTimerTask(void *pvParameters)
         motor.startTrqCtrl();             // トルク制御を開始
         motor.setSpdLimit(2.0, 3.0);      // 定トルク制御時の速度制限を設定。2.0rad/sに達したらトルクを減少させはじめ、3.0rad/sでトルク0にする
         motor.setTrqRef(trqCommand);      // トルク目標値を代入
-      } else if (modeCommand == Mode::SpdCtrl) {
-        motor.stopCtrl();
+
+      } else if (modeCommand == Mode::SpdCtrl) { // 速度制御モードのとき
+        motor.startSpdCtrl();                    // 速度制御を開始
+        motor.setTrqLimit(3.0);                  // 定速制御時のトルク上限を設定
+        motor.setSpdRef(spdCommand);             // 速度目標値を代入
+
       } else {
         motor.stopCtrl();
       }
@@ -153,7 +158,9 @@ void onTimerTask(void *pvParameters)
       motor.stopCtrl(); // 制御を終了
     }
 
-    motor.update(CONTROL_INTERVAL);
+    if (digitalRead(PIN_POWER) == HIGH) { // コンバータ電源ON時(=CAN送信できるとき)のみモータ更新
+      motor.update(CONTROL_INTERVAL);
+    }
   }
 }
 
@@ -178,13 +185,17 @@ void loop()
       log = tmotor.logRead();           // ログをひとつ取得
     }
     // 全ログが出るとうるさいので、最新の数値のみを出すようにした
+    // Serial.printf(
+    //     "{\"timestamp\": %d, \"trq\":%.3f, \"spd\":%.3f, \"pos\":%.3f, \"integratingAngle\": %.3f}\n",
+    //     log.timestamp,
+    //     log.trq,
+    //     log.spd,
+    //     log.pos,
+    //     log.integratingAngle);
     Serial.printf(
-        "{\"timestamp\": %d, \"trq\":%.3f, \"spd\":%.3f, \"pos\":%.3f, \"integratingAngle\": %.3f}\n",
-        log.timestamp,
+        "\"trq\":%.3f, \"spd\":%.3f\n",
         log.trq,
-        log.spd,
-        log.pos,
-        log.integratingAngle);
+        log.spd);
     // ログをwebSocketで配信
     /*
     sprintf(json_data, "{\"torque\":%.3f, \"speed\":%.3f, \"position\":%.3f, \"integratingAngl\":%.3f}", log.trq, log.spd, log.pos, log.integratingAngle);
@@ -203,14 +214,14 @@ void setPower(bool command)
 {
   if (digitalRead(PIN_POWER) == LOW && command == 1) {
     digitalWrite(PIN_POWER, HIGH);
-    Serial.println("[setPower] motor power: ON");
+    // Serial.println("[setPower] motor power: ON");  // corepanicするので消した
   }
   if (digitalRead(PIN_POWER) == HIGH && command == 0) {
     if (tmotor.getMotorControl() == 1) {
       tmotor.sendMotorControl(0);
     }
     digitalWrite(PIN_POWER, LOW);
-    Serial.println("[setPower] motor power: OFF");
+    // Serial.println("[setPower] motor power: OFF");
   }
 }
 
@@ -220,14 +231,14 @@ void setControl(bool command)
     digitalWrite(PIN_POWER, HIGH);
     if (tmotor.getMotorControl() == 0) {
       tmotor.sendMotorControl(1);
-      Serial.println("[setControl] motor control mode: ON");
+      // Serial.println("[setControl] motor control mode: ON");
     }
   }
   if (command == 0) {
     if (tmotor.getMotorControl() == 1) {
       tmotor.sendCommand(0.0, 0.0, 0.0, 0.0, 0.0);
       tmotor.sendMotorControl(0);
-      Serial.println("[setControl] motor control mode: OFF");
+      // Serial.println("[setControl] motor control mode: OFF");
     }
   }
 }
@@ -254,19 +265,5 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
     // Serial.print("Client Message:");
     // Serial.println((char *)data);
-  }
-}
-
-// valの絶対値がabsLmitを超えているとき、絶対値をlimitに制約して返す
-// 例 absConstrain(2.0, 1.0) = 1.0, absConstrain(-3.0, 1.0) = -1.0
-float absConstrain(float val, float absLimit)
-{
-  if (absLimit < 0.0) { // エラー
-    return 0.0;
-  }
-  if (val > 0) {
-    return min(val, absLimit);
-  } else {
-    return -min(-val, absLimit);
   }
 }

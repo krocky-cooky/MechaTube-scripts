@@ -8,10 +8,11 @@ MotorController::MotorController(Tmotor &tmotor)
 {
 }
 
-void MotorController::init()
+void MotorController::init(float spdKp, float spdKi)
 {
-  kp = 2 * M * POLE_OMEGA - D;
-  ki = M * POLE_OMEGA * POLE_OMEGA;
+  // モータのMとDが分かれば極配置法で設計できるが、分からないので直接指定することにした
+  kp = spdKp; // 2 * M * POLE_OMEGA - D;
+  ki = spdKi; // M * POLE_OMEGA * POLE_OMEGA;
   trqRef_ = 0.0;
   spdLimit_ = 0.0;
   spdMax_ = 0.0;
@@ -61,6 +62,11 @@ void MotorController::setSpdRef(float spdRef)
   spdRef_ = spdRef;
 }
 
+void MotorController::setTrqLimit(float trqLimit)
+{
+  trqLimit_ = trqLimit;
+}
+
 void MotorController::stopCtrl()
 {
   object_ = CtrlObject::None;
@@ -73,11 +79,11 @@ void MotorController::update(unsigned long interval)
     calculatedTrq_ = 0.0;
 
   } else if (object_ == CtrlObject::SpdLimitedTrq) {
-    if ((tmotor_.trqSent > 0.0 && tmotor_.spdReceived > spdMax_) ||
-        (tmotor_.trqSent < 0.0 && tmotor_.spdReceived < -spdMax_)) { // 正転トルク指令時にspdMaxを上回る & 逆転トルク指令時に-spdMaxを下回る
+    if ((tmotor_.trqSent >= 0.0 && tmotor_.spdReceived > spdMax_) ||
+        (tmotor_.trqSent <= 0.0 && tmotor_.spdReceived < -spdMax_)) { // 正転トルク指令時にspdMaxを上回る & 逆転トルク指令時に-spdMaxを下回る
       calculatedTrq_ = 0.0;
-    } else if ((tmotor_.trqSent > 0.0 && tmotor_.spdReceived > spdLimit_) ||
-               (tmotor_.trqSent < 0.0 && tmotor_.spdReceived < -spdLimit_)) { // 正転トルク指令時spdLimitを上回る & 逆転トルク指令時に-spdLimitを下回る
+    } else if ((tmotor_.trqSent >= 0.0 && tmotor_.spdReceived > spdLimit_) ||
+               (tmotor_.trqSent <= 0.0 && tmotor_.spdReceived < -spdLimit_)) { // 正転トルク指令時spdLimitを上回る & 逆転トルク指令時に-spdLimitを下回る
       calculatedTrq_ = (spdMax_ - abs(tmotor_.spdReceived)) / (spdMax_ - spdLimit_) * trqRef_;
     } else {
       calculatedTrq_ = trqRef_;
