@@ -21,13 +21,13 @@ void loop() {
   motor.startTrqCtrl();  // トルク制御を開始
   motor.setTrqRef(2.0);  // トルク目標値2.0Nm
   motor.setTrqRef(3.0);  // トルク目標値3.0Nmに変更
-  motor.endCtrl();  // 制御を終了
+  motor.stopCtrl();  // 制御を終了
 
   // 速度制御
   motor.startSpdCtrl();  // トルク制御を開始
   motor.setSpdRef(2.0);  // 速度目標値2.0rad/s
   motor.setSpdRef(3.0);  // 速度目標値を3.0rad/sに変更
-  motor.endCtrl();  // 制御を終了
+  motor.stopCtrl();  // 制御を終了
 }
 */
 
@@ -96,6 +96,8 @@ public:
    */
   void update(unsigned long interval);
 
+  float calculatedTrq_;  // 制御器で計算されたトルク[Nm](ログ出力のためpublicにしている。要変更)
+
 private:
   enum class CtrlObject // 制御対象
   {
@@ -118,7 +120,6 @@ private:
   float spdRef_;      // 速度指令値[rad/s]
   float trqLimit_;    // 速度制御中のトルク最大値[Nm]。速度制御中のトルクはこの値より大きくならない
   float spdDevIntegral_; // 速度のPID制御で使う、速度偏差の積分値
-  float calculatedTrq_;  // 制御器で計算されたトルク[Nm]
 
   void clear_(); // 制御器の内部変数や指令値を初期化する。上限値は初期化されない
 };

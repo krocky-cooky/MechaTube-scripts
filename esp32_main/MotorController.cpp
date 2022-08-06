@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 MotorController::MotorController(Tmotor &tmotor)
-  : kp(0.0), ki(0.0), tmotor_(tmotor), object_(CtrlObject::None), trqRef_(0.0), spdLimit_(0.0), spdMax_(0.0), spdRef_(0.0),trqLimit_(0.0), spdDevIntegral_(0.0), calculatedTrq_(0.0)
+  : kp(0.0), ki(0.0), tmotor_(tmotor), object_(CtrlObject::None), trqRef_(0.0), spdLimit_(0.0), spdMax_(0.0), spdRef_(0.0), trqLimit_(0.0), spdDevIntegral_(0.0), calculatedTrq_(0.0)
 {
 }
 
@@ -24,15 +24,17 @@ void MotorController::init()
 void MotorController::clear_()
 {
   trqRef_ = 0.0;
-  spdRef_= 0.0;
+  spdRef_ = 0.0;
   spdDevIntegral_ = 0.0;
   calculatedTrq_ = 0.0;
 }
 
 void MotorController::startTrqCtrl()
 {
-  clear_();
-  object_ = CtrlObject::SpdLimitedTrq;
+  if (object_ != CtrlObject::SpdLimitedTrq) { // 現在トルク制御モードでない場合のみ、変数をクリアしモードを変更
+    clear_();
+    object_ = CtrlObject::SpdLimitedTrq;
+  }
 }
 
 void MotorController::setTrqRef(float trqRef)
@@ -48,8 +50,10 @@ void MotorController::setSpdLimit(float spdLimit, float spdMax)
 
 void MotorController::startSpdCtrl()
 {
-  clear_();
-  object_ = CtrlObject::Spd;
+  if (object_ != CtrlObject::Spd) { // 現在速度制御モードでない場合のみ、変数をクリアしモードを変更
+    clear_();
+    object_ = CtrlObject::Spd;
+  }
 }
 
 void MotorController::setSpdRef(float spdRef)
@@ -69,19 +73,24 @@ void MotorController::update(unsigned long interval)
     calculatedTrq_ = 0.0;
 
   } else if (object_ == CtrlObject::SpdLimitedTrq) {
-    if (tmotor_.spdReceived < spdLimit_) {
-      calculatedTrq_ = trqRef_;
-    } else if (tmotor_.spdReceived < spdMax_) {
-      calculatedTrq_ = (spdMax_ - tmotor_.spdReceived) / (spdMax_ - spdLimit_) * trqRef_;
-    } else {
+    if ((tmotor_.trqSent > 0.0 && tmotor_.spdReceived > spdMax_) ||
+        (tmotor_.trqSent < 0.0 && tmotor_.spdReceived < -spdMax_)) { // 正転トルク指令時にspdMaxを上回る & 逆転トルク指令時に-spdMaxを下回る
       calculatedTrq_ = 0.0;
+    } else if ((tmotor_.trqSent > 0.0 && tmotor_.spdReceived > spdLimit_) ||
+               (tmotor_.trqSent < 0.0 && tmotor_.spdReceived < -spdLimit_)) { // 正転トルク指令時spdLimitを上回る & 逆転トルク指令時に-spdLimitを下回る
+      calculatedTrq_ = (spdMax_ - abs(tmotor_.spdReceived)) / (spdMax_ - spdLimit_) * trqRef_;
+    } else {
+      calculatedTrq_ = trqRef_;
     }
 
   } else if (object_ == CtrlObject::Spd) {
-    float spdDev = spdRef_ - tmotor_.spdReceived;                 // 速度の目標値からの偏差
-    spdDevIntegral_ += (calculatedTrq_ < trqLimit_) ? spdDev : 0; // 速度偏差を積分(Anti-windupつき)
+    float spdDev = spdRef_ - tmotor_.spdReceived;                                       // 速度の目標値からの偏差
+    spdDevIntegral_ += (abs(calculatedTrq_) < trqLimit_) ? spdDev * interval / 1e6 : 0; // 速度偏差を積分(Anti-windupつき)
     calculatedTrq_ = kp * spdDev + ki * spdDevIntegral_;
+
+  } else {
+    calculatedTrq_ = 0.0;
   }
-  
+
   tmotor_.sendCommand(0, 0, 0, 0, calculatedTrq_);
 }

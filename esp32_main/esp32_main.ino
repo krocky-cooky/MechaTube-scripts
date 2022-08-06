@@ -10,6 +10,7 @@
 
 #include "Filter.hpp"
 #include "Mode.hpp"
+#include "MotorController.hpp"
 #include "Secrets.h"
 #include "SerialCommunication.hpp"
 #include "Tmotor.h"
@@ -25,7 +26,7 @@
 #define KD 1.0
 #define TAU_TRQ 1.0             // 一次遅れ系によるトルク指令の時定数[s]
 #define TAU_SPD 1.0             // 一次遅れ系による速度指令の時定数[s]
-#define CONTROL_INTERVAL 100000 // 制御周期[us]
+#define CONTROL_INTERVAL 10000 // 制御周期[us]
 
 // 閾値等
 #define HANDSWITCH_VOLTAGE_THRESHOLD 10.0 // 手元スイッチのオンオフを識別するための、スイッチアナログ入力ピンの電圧閾値 [V]
@@ -50,6 +51,7 @@ TaskHandle_t onTimerTaskHandle = NULL;
 SerialCommunication serialCommunication;
 ESP32BuiltinCAN esp32BuiltinCAN(PIN_CANRX, PIN_CANTX);
 Tmotor tmotor(esp32BuiltinCAN, MOTOR_ID, DRIVER_ID);
+MotorController motor(tmotor);
 TouchSwitch touchSwitch(PIN_HANDSWITCH, HANDSWITCH_VOLTAGE_THRESHOLD);
 
 FirstLPF firstOrderDelayTrq;
@@ -83,7 +85,7 @@ void setup()
   }
 
   tmotor.init();
-
+  /*
   // WiFIのsetup
   // if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
   //   Serial.println("Failed to configure!");
@@ -99,6 +101,7 @@ void setup()
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
   server.begin();
+  */
 
   Serial.println("[setup] setup comleted");
   firstOrderDelayTrq.setTau(TAU_TRQ); // トルクの1次遅れフィルタを宣言
@@ -134,50 +137,23 @@ void onTimerTask(void *pvParameters)
     bool handSwitch = touchSwitch.getState();
     float trqSend = 0.0;
     float spdSend = 0.0;
-    Mode modeSend = Mode::SpdCtrl;
 
     // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
-    if (tmotor.getMotorControl()) {
-      // 速度超過の判定
-      static bool overSpeed = false;
-      if (!overSpeed && abs(tmotor.spdReceived) > spdLimit + 0.5) { // 速度制限値を0.5rad/s以上超過でoverspeedフラグを立てる
-        overSpeed = true;
-      } else if (overSpeed && abs(tmotor.spdReceived) < spdLimit) { // 速度制限値を下回ったらoverspeedフラグを解除
-        overSpeed = false;
+    if (motorControl) {
+      if (modeCommand == Mode::TrqCtrl) { // トルク制御モードのとき
+        motor.startTrqCtrl();             // トルク制御を開始
+        motor.setSpdLimit(2.0, 3.0);      // 定トルク制御時の速度制限を設定。2.0rad/sに達したらトルクを減少させはじめ、3.0rad/sでトルク0にする
+        motor.setTrqRef(trqCommand);      // トルク目標値を代入
+      } else if (modeCommand == Mode::SpdCtrl) {
+        motor.stopCtrl();
+      } else {
+        motor.stopCtrl();
       }
-
-      if (overSpeed) {                                        // 速度超過フラグが出ている場合、速度を上限までに制約する
-        spdSend = absConstrain(tmotor.spdReceived, spdLimit); // 符号を保って絶対値だけspdLimitへ
-        tmotor.sendCommand(0, spdSend, 0, KD, 0);
-        Serial.println("overspeed");
-      } else { // 速度超過フラグが出ていないとき
-        // 制御モード選択
-        if (modeSend == Mode::TrqCtrl) { // トルク制御モードのとき
-          firstOrderDelaySpd.clear(0.0); // 速度の1次遅れ計算用変数は使わないのでリセット
-          if (handSwitch) {              // 手元スイッチONのとき送信値をゆっくり指令値に近づけ、OFFのときは0に近づける
-            trqSend = firstOrderDelayTrq.update(trqCommand, CONTROL_INTERVAL / 1e6);
-          } else {
-            trqSend = 0.0;
-            firstOrderDelayTrq.clear(0.0);
-          }
-          tmotor.sendCommand(0, 0, 0, 0, trqSend); // 送信
-
-        } else if (modeSend == Mode::SpdCtrl) { // 速度指令モードのとき
-          firstOrderDelayTrq.clear(0.0);        // トルクの1次遅れ計算用変数は使わないのでリセット
-          if (handSwitch) {
-            spdSend = firstOrderDelaySpd.update(spdCommand, CONTROL_INTERVAL / 1e6);
-          } else {
-            spdSend = firstOrderDelaySpd.update(0.0, CONTROL_INTERVAL / 1e6);
-          }
-          spdSend = absConstrain(spdCommand, spdLimit - 0.5);
-          tmotor.sendCommand(0, spdSend, 0, KD, 0); // 送信
-        }
-      }
-
-    } else { // モータ制御モードに入っていないとき、全ての変数を0にリセットしておく
-      firstOrderDelayTrq.clear(0.0);
-      firstOrderDelaySpd.clear(0.0);
+    } else {            // モータ制御モードに入っていないとき
+      motor.stopCtrl(); // 制御を終了
     }
+
+    motor.update(CONTROL_INTERVAL);
   }
 }
 
@@ -195,28 +171,32 @@ void loop()
 
   // CAN受信ログを1secおきにprint
   static unsigned long time_last_print = 0;
-  if (millis() - time_last_print > 1000) { // ここの1000をいじるとログ取得間隔を調整可
+  if (millis() - time_last_print > 100) { // ここの数値をいじるとログ取得間隔[ms]を調整可
     time_last_print = millis();
-    while (tmotor.logAvailable() > 0) {   // ログが1つ以上たまっていたら
-      Tmotor::Log log = tmotor.logRead(); // ログをひとつ取得
-      Serial.printf(
-          "{\"timestamp\": %d, \"trq\":%.3f, \"spd\":%.3f, \"pos\":%.3f, \"integratingAngle\": %.3f}\n",
-          log.timestamp,
-          log.trq,
-          log.spd,
-          log.pos,
-          log.integratingAngle);
-      // ログをwebSocketで配信
-      sprintf(json_data, "{\"torque\":%.3f, \"speed\":%.3f, \"position\":%.3f, \"integratingAngl\":%.3f}", log.trq, log.spd, log.pos, log.integratingAngle);
-      ws.textAll(json_data);
+    Tmotor::Log log;
+    while (tmotor.logAvailable() > 0) { // ログが1つ以上たまっていたら
+      log = tmotor.logRead();           // ログをひとつ取得
     }
+    // 全ログが出るとうるさいので、最新の数値のみを出すようにした
+    Serial.printf(
+        "{\"timestamp\": %d, \"trq\":%.3f, \"spd\":%.3f, \"pos\":%.3f, \"integratingAngle\": %.3f}\n",
+        log.timestamp,
+        log.trq,
+        log.spd,
+        log.pos,
+        log.integratingAngle);
+    // ログをwebSocketで配信
+    /*
+    sprintf(json_data, "{\"torque\":%.3f, \"speed\":%.3f, \"position\":%.3f, \"integratingAngl\":%.3f}", log.trq, log.spd, log.pos, log.integratingAngle);
+    ws.textAll(json_data);
+    */
   }
 
   // コンバータの電圧を表示
   // float voltageOfConverter = analogRead(34) * 3.3 * 21 / 4096; //コンバータの電圧の値
   // Serial.printf("the voltage of converter = %f\n", voltageOfConverter);
 
-  delay(100);
+  delay(1);
 }
 
 void setPower(bool command)
