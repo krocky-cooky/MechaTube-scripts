@@ -22,7 +22,6 @@
 #define PIN_CANTX 33
 #define PIN_POWER 26
 #define PIN_HANDSWITCH 35
-#define KP 0.1
 #define KD 1.0
 #define TAU_TRQ 1.0             // 一次遅れ系によるトルク指令の時定数[s]
 #define TAU_SPD 1.0             // 一次遅れ系による速度指令の時定数[s]
@@ -43,7 +42,7 @@ float spdCommand = 0.0;    // 速度指令値[rad/s]
 float kpCommand = 0.0;     // 位置フィードバックゲイン
 float kdCommand = 0.0;     // 速度フィードバックゲイン
 float trqCommand = 0.0;    // トルク指令値[Nm]
-float spdLimit = 0.0;      // 速度上限値[rad/s]
+float spdLimit = 1.6;      // 速度上限値[rad/s]
 
 hw_timer_t *timer0 = NULL;
 TaskHandle_t onTimerTaskHandle = NULL;
@@ -86,9 +85,9 @@ void setup()
   tmotor.init();
 
   // WiFIのsetup
-  if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
-    Serial.println("Failed to configure!");
-  }
+  // if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
+  //   Serial.println("Failed to configure!");
+  // }
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -149,7 +148,8 @@ void onTimerTask(void *pvParameters)
 
       if (overSpeed) {                                        // 速度超過フラグが出ている場合、速度を上限までに制約する
         spdSend = absConstrain(tmotor.spdReceived, spdLimit); // 符号を保って絶対値だけspdLimitへ
-        tmotor.sendCommand(0, spdSend, KP, KD, 0);
+        tmotor.sendCommand(0, spdSend, 0, KD, 0);
+        Serial.println("overspeed");
       } else { // 速度超過フラグが出ていないとき
         // 制御モード選択
         if (modeSend == Mode::TrqCtrl) { // トルク制御モードのとき
@@ -170,7 +170,7 @@ void onTimerTask(void *pvParameters)
             spdSend = firstOrderDelaySpd.update(0.0, CONTROL_INTERVAL / 1e6);
           }
           spdSend = absConstrain(spdCommand, spdLimit - 0.5);
-          tmotor.sendCommand(0, spdSend, KP, KD, 0); // 送信
+          tmotor.sendCommand(0, spdSend, 0, KD, 0); // 送信
         }
       }
 
@@ -272,8 +272,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
 {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-    Serial.print("Client Message:");
-    Serial.println((char *)data);
+    // Serial.print("Client Message:");
+    // Serial.println((char *)data);
   }
 }
 
