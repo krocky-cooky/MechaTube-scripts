@@ -1,7 +1,7 @@
 #include "SerialCommunication.hpp"
 
 SerialCommunication::SerialCommunication()
-  : power(false), motorControl(false), mode(Mode::SpdCtrl), trq(0.0f), spd(0.0f)
+  : power(false), motorControl(false), mode(Mode::TrqCtrl), trq(0.0f), spd(0.0f)
 {
 }
 char SerialCommunication::receive()
