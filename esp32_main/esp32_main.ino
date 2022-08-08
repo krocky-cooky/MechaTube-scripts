@@ -43,7 +43,6 @@ float spdCommand = 0.0;    // 速度指令値[rad/s]
 float kpCommand = 0.0;     // 位置フィードバックゲイン
 float kdCommand = 0.0;     // 速度フィードバックゲイン
 float trqCommand = 0.0;    // トルク指令値[Nm]
-float spdLimit = 1.6;      // 速度上限値[rad/s]
 
 hw_timer_t *timer0 = NULL;
 TaskHandle_t onTimerTaskHandle = NULL;
