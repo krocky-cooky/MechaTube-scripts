@@ -215,3 +215,122 @@ void setControl(bool command)
     }
   }
 }
+
+
+// websocket.cppから移植
+
+AsyncWebServer server(80);
+AsyncWebSocket ws("ws/");
+
+bool msgAvailable; // 受信すると1になるフラグ
+Command commandReceived;   // 受信した指令値
+
+void onWsEvent(AsyncWebSocket *, AsyncWebSocketClient *, AwsEventType, void *, uint8_t *, size_t);
+void handleWebSocketMessage(void *, uint8_t *, size_t);
+
+void websocketInit()
+{
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
+  server.begin();
+}
+
+bool websocketAvailable()
+{
+  return msgAvailable;
+}
+
+Command websocketReadCommand()
+{
+  msgAvailable = false; // 読み出したら受信フラグをクリア
+  return commandReceived;
+}
+
+void websocketSendStatus(Status& status)
+{
+  static StaticJsonDocument<256> doc;
+
+  if (status.target == Target::None) {
+    doc["target"] = nullptr;
+  } else if (status.target == Target::SpdCtrl) {
+    doc["target"] = "spd";
+  } else if (status.target == Target::TrqCtrl) {
+    doc["target"] = "trq";
+  } else {
+    // pass
+  }
+  doc["trq"] = status.trq;
+  doc["spd"] = status.spd;
+  doc["pos"] = status.pos;
+  doc["integratingAngle"] = status.integratingAngle;
+
+  String jsonStr;
+  serializeJson(doc, jsonStr);
+
+  ws.textAll(jsonStr);     // websocketで送信
+  Serial.println(jsonStr); // シリアルモニタにprint
+}
+
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+{
+  switch (type) {
+    case WS_EVT_CONNECT:
+      Serial.println("Websocket client connection received");
+      break;
+
+    case WS_EVT_DISCONNECT:
+      Serial.println("Client disconnected");
+      break;
+
+    case WS_EVT_DATA:
+      Serial.println("WS_EVT_DATA");
+      handleWebSocketMessage(arg, data, len);
+      break;
+
+    default:
+      break;
+  }
+}
+
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
+{
+  AwsFrameInfo *info = (AwsFrameInfo *)arg;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+    String message((char *)data); // 扱いやすいようにString型に変換
+    Serial.print("Client Message:");
+    Serial.println(message);
+
+    StaticJsonDocument<256> doc;                                // 受信した文字列をjsonにparseするためのバッファ
+    DeserializationError error = deserializeJson(doc, message); // JSONにparse
+    if (error) {
+      Serial.print("[handleWebsocetMessage] deserializeJson() failed: ");
+      Serial.println(error.f_str());
+      return; // parse時にエラーが出たらそこで終了する
+    }
+
+    msgAvailable = true; // parseエラーがなければ、メッセージ到着フラグをセット
+
+    if (doc.containsKey("target")) {
+      const char *targetChar = doc["target"];
+      const String target(targetChar);
+
+      if (target.equals("spd")) {
+        commandReceived.target = Target::SpdCtrl;
+        commandReceived.spd = doc["spd"];
+        commandReceived.trq = 0.0;
+        commandReceived.trqLimit = doc["trqLimit"];
+
+      } else if (target.equals("trq")) {
+        commandReceived.target = Target::TrqCtrl;
+        commandReceived.trq = doc["trq"];
+        commandReceived.spd = 0.0;
+        commandReceived.spdLimit = doc["spdLimit"];
+
+      } else {
+        commandReceived.target = Target::TrqCtrl;
+        commandReceived.trq = 0.0;
+        commandReceived.spd = 0.0;
+      }
+    }
+  }
+}
