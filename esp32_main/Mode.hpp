@@ -7,9 +7,26 @@
 
 #pragma once
 
-enum class Mode
-{
-  SpdCtrl = 0, // 速度制御モード
+enum class Target {
+  None = 0,
+  SpdCtrl, // 速度制御モード
   TrqCtrl  // トルク制御モード
-  // ゆくゆくは「可変負荷モード」などが入ってくる
+};
+
+struct Command {
+  Target target;
+  float trq;
+  float spd;
+  float trqLimit;
+  float spdLimit;
+  Command() : target(Target::None), trq(0.0), spd(0.0), trqLimit(0.0), spdLimit(0.0) {}
+};
+
+struct Status {
+  Target target;
+  float trq;
+  float spd;
+  float pos;
+  float integratingAngle;
+  Status() : target(Target::None), trq(0.0), spd(0.0), pos(0.0), integratingAngle(0.0) {}
 };

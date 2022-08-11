@@ -33,6 +33,7 @@ void loop() {
 
 #pragma once
 
+#include "Mode.hpp"
 #include "Tmotor.h"
 #include <Arduino.h>
 
@@ -106,15 +107,8 @@ public:
 
 
 private:
-  enum class CtrlObject // 制御対象
-  {
-    None = 0,
-    SpdLimitedTrq, // 速度上限付きトルク制御モード
-    Spd            // 速度制御モード
-  };
-
   Tmotor &tmotor_;
-  CtrlObject object_; // 制御対象
+  Target target_; // 制御対象
 
   // トルク制御で使う変数
 

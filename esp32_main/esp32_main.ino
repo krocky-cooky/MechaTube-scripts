@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <CAN.h>
 #include <ESPAsyncWebServer.h>
 #include <WiFi.h>
@@ -32,18 +33,6 @@
 #define HANDSWITCH_VOLTAGE_THRESHOLD 10.0 // 手元スイッチのオンオフを識別するための、スイッチアナログ入力ピンの電圧閾値 [V]
 #define MAX_LOGNUM 1024                   // 筋力測定の最大ログ数
 
-// フラグ等
-Mode modeCommand = Mode::TrqCtrl; // 制御対象を表すフラグ. Mode.hppに一覧で記載
-
-// 指令値
-bool power = false;        // コンバータ電源ON/OFF
-bool motorControl = false; // モータ制御モードON/OFF
-float posCommand = 0.0;    // 位置指令値[rad]
-float spdCommand = 0.0;    // 速度指令値[rad/s]
-float kpCommand = 0.0;     // 位置フィードバックゲイン
-float kdCommand = 0.0;     // 速度フィードバックゲイン
-float trqCommand = 0.0;    // トルク指令値[Nm]
-
 hw_timer_t *timer0 = NULL;
 TaskHandle_t onTimerTaskHandle = NULL;
 
@@ -53,8 +42,12 @@ Tmotor tmotor(esp32BuiltinCAN, MOTOR_ID, DRIVER_ID);
 MotorController motor(tmotor);
 TouchSwitch touchSwitch(PIN_HANDSWITCH, HANDSWITCH_VOLTAGE_THRESHOLD);
 
-FirstLPF firstOrderDelayTrq;
-FirstLPF firstOrderDelaySpd;
+// フラグ等
+bool power = false;        // コンバータ電源ON/OFF
+bool motorControl = false; // モータ制御モードON/OFF
+
+// 指令値
+Command command;
 
 void IRAM_ATTR onTimer()
 {
@@ -78,7 +71,7 @@ void setup()
 
   tmotor.init();
   motor.init(0.8, 0.8); // motor.init(Pゲイン、Iゲイン)  // 220806:Pゲイン1.0以上だと速度ゼロ指令時に震えた
-  
+
   // WiFIのsetup
   if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
     Serial.println("Failed to configure!");
@@ -90,9 +83,8 @@ void setup()
   }
   Serial.println(WiFi.localIP());
 
-  websocketInit();  // websocketセットアップ
+  websocketInit(); // websocketセットアップ
 
-  Serial.println("[setup] setup comleted");
   // firstOrderDelayTrq.setTau(TAU_TRQ); // トルクの1次遅れフィルタを宣言
   // firstOrderDelaySpd.setTau(TAU_SPD); // 速度の1次遅れフィルタを宣言
 
@@ -104,6 +96,11 @@ void setup()
   timerAttachInterrupt(timer0, onTimer, true);      // 割り込み関数を登録. edge=trueでエッジトリガ
   timerAlarmEnable(timer0);                         // タイマー割り込みを起動
 
+  delay(1000);
+  power = true;  // 1秒後に電源ON
+  delay(2000);
+  motorControl = true;  // その2秒後にモータ制御起動
+  
   Serial.printf("[setup] setup comleted\n");
 }
 
@@ -118,32 +115,22 @@ void onTimerTask(void *pvParameters)
   while (1) {
     xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // おまじない。xTaskNotifyFromISRから通知を受けるまで待機
 
-    // 指令値に応じて、モータの電源とモータ制御モードを変更する
+    // フラグに応じて、モータの電源とモータ制御モードを変更する
     setPower(power);
     setControl(motorControl);
 
-    // 手元スイッチのON/OFFを取得する
-    bool handSwitch = touchSwitch.getState();
-    float trqSend = 0.0;
-    float spdSend = 0.0;
+    if (command.target == Target::TrqCtrl) {                       // トルク制御モードのとき
+      motor.startTrqCtrl();                                        // トルク制御を開始
+      motor.setSpdLimit(command.spdLimit, command.spdLimit + 1.0); // 定トルク制御時の速度制限を設定。2.0rad/sに達したらトルクを減少させはじめ、3.0rad/sでトルク0にする
+      motor.setTrqRef(command.trq);                                // トルク目標値を代入
 
-    // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
-    if (motorControl) {
-      if (modeCommand == Mode::TrqCtrl) { // トルク制御モードのとき
-        motor.startTrqCtrl();             // トルク制御を開始
-        motor.setSpdLimit(2.0, 3.0);      // 定トルク制御時の速度制限を設定。2.0rad/sに達したらトルクを減少させはじめ、3.0rad/sでトルク0にする
-        motor.setTrqRef(trqCommand);      // トルク目標値を代入
+    } else if (command.target == Target::SpdCtrl) { // 速度制御モードのとき
+      motor.startSpdCtrl();                         // 速度制御を開始
+      motor.setTrqLimit(command.trqLimit);          // 定速制御時のトルク上限を設定
+      motor.setSpdRef(command.spd);                 // 速度目標値を代入
 
-      } else if (modeCommand == Mode::SpdCtrl) { // 速度制御モードのとき
-        motor.startSpdCtrl();                    // 速度制御を開始
-        motor.setTrqLimit(3.0);                  // 定速制御時のトルク上限を設定
-        motor.setSpdRef(spdCommand);             // 速度目標値を代入
-
-      } else {
-        motor.stopCtrl();
-      }
-    } else {            // モータ制御モードに入っていないとき
-      motor.stopCtrl(); // 制御を終了
+    } else {
+      motor.stopCtrl();
     }
 
     if (digitalRead(PIN_POWER) == HIGH) { // コンバータ電源ON時(=CAN送信できるとき)のみモータ更新
@@ -155,16 +142,23 @@ void onTimerTask(void *pvParameters)
 void loop()
 {
   // シリアル通信でコマンドを受信し、反映
-  // 現在はつねにserialCommunicationモジュールが保持する指令値を反映するコードになっているので、毎loopごとにcommandが直近のシリアル受信値で上書きされる
-  // retval を確認し、0でないときのみserialCommunicationの値を反映するようにすれば、別の方法(webSocket等)で受信したコマンドと共存できるはず
-  char retval = serialCommunication.receive();
-  power = serialCommunication.power;
-  motorControl = serialCommunication.motorControl;
-  modeCommand = serialCommunication.mode;
-  trqCommand = serialCommunication.trq;
-  spdCommand = serialCommunication.spd;
+  char retval = serialCommunication.receive(); // 受信
+  if (retval) {
+    power = serialCommunication.power;
+    motorControl = serialCommunication.motorControl;
+    command.target = serialCommunication.target;
+    command.trq = serialCommunication.trq;
+    command.spdLimit = 2.0; // 速度制限はシリアルで受け取っていないので2.0rad/sに設定
+    command.spd = serialCommunication.spd;
+    command.trqLimit = 6.0; // トルク制限はシリアルで受け取っていないので6.0Nmに設定
+  }
 
-  // CAN受信ログを1secおきにprint
+  // websocketからのコマンドを受信し、反映
+  if (websocketAvailable()) {
+    command = websocketReadCommand();
+  }
+
+  // 状態を100msおきに配信
   static unsigned long time_last_print = 0;
   if (millis() - time_last_print > 100) { // ここの数値をいじるとログ取得間隔[ms]を調整可
     time_last_print = millis();
@@ -172,22 +166,14 @@ void loop()
     while (tmotor.logAvailable() > 0) { // ログが1つ以上たまっていたら
       log = tmotor.logRead();           // ログをひとつ取得
     }
-    // 全ログが出るとうるさいので、最新の数値のみを出すようにした
-    // Serial.printf(
-    //     "{\"timestamp\": %d, \"trq\":%.3f, \"spd\":%.3f, \"pos\":%.3f, \"integratingAngle\": %.3f}\n",
-    //     log.timestamp,
-    //     log.trq,
-    //     log.spd,
-    //     log.pos,
-    //     log.integratingAngle);
-    Serial.printf(
-        "\"trq\":%.3f, \"spd\":%.3f\n",
-        log.trq,
-        log.spd);
-    // ログをwebSocketで配信
-    char json_data[256];
-    sprintf(json_data, "{\"torque\":%.3f, \"speed\":%.3f, \"position\":%.3f, \"integratingAngl\":%.3f}", log.trq, log.spd, log.pos, log.integratingAngle);
-    webSocketSend(json_data);
+    // 状態をwebSocketで配信
+    Status status;
+    status.target = command.target;
+    status.trq = log.trq;
+    status.spd = log.spd;
+    status.pos = log.pos;
+    status.integratingAngle = log.integratingAngle;
+    websocketSendStatus(status);
   }
 
   // コンバータの電圧を表示

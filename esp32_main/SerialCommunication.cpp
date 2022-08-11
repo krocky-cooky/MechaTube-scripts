@@ -1,7 +1,7 @@
 #include "SerialCommunication.hpp"
 
 SerialCommunication::SerialCommunication()
-  : power(false), motorControl(false), mode(Mode::TrqCtrl), trq(0.0f), spd(0.0f)
+  : power(false), motorControl(false), target(Target::TrqCtrl), trq(0.0f), spd(0.0f)
 {
 }
 char SerialCommunication::receive()
@@ -48,7 +48,7 @@ char SerialCommunication::decodeCommand(const char *buf)
       spd = 0.0;
       break;
     case 't':
-      mode = Mode::TrqCtrl;
+      target = Target::TrqCtrl;
       power = true;
       motorControl = true;
       trq = value;
@@ -58,7 +58,7 @@ char SerialCommunication::decodeCommand(const char *buf)
       // increaseOfToraueForEccentricMotion = value;
       break;
     case 's':
-      mode = Mode::SpdCtrl;
+      target = Target::SpdCtrl;
       power = true;
       motorControl = true;
       spd = value;

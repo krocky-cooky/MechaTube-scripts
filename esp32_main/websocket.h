@@ -5,8 +5,11 @@
  * @date 2022-08-09
  */
 
+#pragma once
+
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
+#include "Mode.hpp"
 
 /**
  * @brief WebSocket通信の立ち上げと初期化
@@ -15,8 +18,19 @@
 void websocketInit();
 
 /**
- * @brief WebSocketで送信する
- * @param buffer 送信したい文字列が入ったchar型配列
+ * @brief WebSocketでコマンドを受信しているかどうか
+ * @return 読み込んでいないコマンドがあるときtrue, ないときfalse
  */
-void webSocketSend(char* buffer);
+bool websocketAvailable();
 
+/**
+ * @brief WebSocketで受け取った指令を取得する
+ * @return Command
+ */
+Command websocketReadCommand();
+
+/**
+ * @brief WebSocketで現在の状態を送信する
+ * @param status 現在の状態をStatus型にして代入する
+ */
+void websocketSendStatus(Status& status);
