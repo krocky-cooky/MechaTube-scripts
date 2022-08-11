@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <CAN.h>
 #include <ESPAsyncWebServer.h>
 #include <WiFi.h>
@@ -43,6 +44,8 @@ float spdCommand = 0.0;    // 速度指令値[rad/s]
 float kpCommand = 0.0;     // 位置フィードバックゲイン
 float kdCommand = 0.0;     // 速度フィードバックゲイン
 float trqCommand = 0.0;    // トルク指令値[Nm]
+float trqLimit = 3.0;
+float spdLimit = 2.0;
 
 hw_timer_t *timer0 = NULL;
 TaskHandle_t onTimerTaskHandle = NULL;
@@ -148,12 +151,12 @@ void onTimerTask(void *pvParameters)
     if (motorControl) {
       if (modeCommand == Mode::TrqCtrl) { // トルク制御モードのとき
         motor.startTrqCtrl();             // トルク制御を開始
-        motor.setSpdLimit(2.0, 3.0);      // 定トルク制御時の速度制限を設定。2.0rad/sに達したらトルクを減少させはじめ、3.0rad/sでトルク0にする
+        motor.setSpdLimit(spdLimit, spdLimit + 1.0);      // 定トルク制御時の速度制限を設定。2.0rad/sに達したらトルクを減少させはじめ、3.0rad/sでトルク0にする
         motor.setTrqRef(trqCommand);      // トルク目標値を代入
 
       } else if (modeCommand == Mode::SpdCtrl) { // 速度制御モードのとき
         motor.startSpdCtrl();                    // 速度制御を開始
-        motor.setTrqLimit(3.0);                  // 定速制御時のトルク上限を設定
+        motor.setTrqLimit(trqLimit);                  // 定速制御時のトルク上限を設定
         motor.setSpdRef(spdCommand);             // 速度目標値を代入
 
       } else {
@@ -175,11 +178,13 @@ void loop()
   // 現在はつねにserialCommunicationモジュールが保持する指令値を反映するコードになっているので、毎loopごとにcommandが直近のシリアル受信値で上書きされる
   // retval を確認し、0でないときのみserialCommunicationの値を反映するようにすれば、別の方法(webSocket等)で受信したコマンドと共存できるはず
   char retval = serialCommunication.receive();
-  power = serialCommunication.power;
-  motorControl = serialCommunication.motorControl;
-  modeCommand = serialCommunication.mode;
-  trqCommand = serialCommunication.trq;
-  spdCommand = serialCommunication.spd;
+  if (retval) {
+    power = serialCommunication.power;
+    motorControl = serialCommunication.motorControl;
+    modeCommand = serialCommunication.mode;
+    trqCommand = serialCommunication.trq;
+    spdCommand = serialCommunication.spd;
+  }
 
   // CAN受信ログを1secおきにprint
   static unsigned long time_last_print = 0;
@@ -197,11 +202,8 @@ void loop()
     //     log.spd,
     //     log.pos,
     //     log.integratingAngle);
-    Serial.printf(
-        "\"trq\":%.3f, \"spd\":%.3f\n",
-        log.trq,
-        log.spd);
-    // ログをwebSocketで配信
+
+    // ログをwebSocketで配信 & print
     char targetStr[12];
     if (modeCommand == Mode::TrqCtrl) {
       sprintf(targetStr, "\"trq\"");
@@ -210,7 +212,9 @@ void loop()
     } else {
       sprintf(targetStr, "null");
     }
+    // Serial.printf("modeCommand=%s, spdCommand=%.3f, trqCommand=%.3f, trqLimit=%.3f, spdLimit=%.3f\n", targetStr, spdCommand, trqCommand, trqLimit, spdLimit);
     sprintf(json_data, "{\"target\":%s,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f}", targetStr, log.trq, log.spd, log.pos, log.integratingAngle);
+    Serial.println(json_data);
     ws.textAll(json_data);
   }
 
@@ -276,5 +280,36 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
     Serial.print("Client Message:");
     Serial.println((char *)data);
+  }
+
+  StaticJsonDocument<256> doc;                                // 受信した文字列をjsonにparseするためのバッファ
+  DeserializationError error = deserializeJson(doc, data); // JSONにparse
+  if (error) {
+    Serial.print("[handleWebsocetMessage] deserializeJson() failed: ");
+    Serial.println(error.f_str());
+    return; // parse時にエラーが出たらそこで終了する
+  }
+
+  if (doc.containsKey("target")) {
+    const char *targetChar = doc["target"];
+    const String target(targetChar);
+
+    if (target.equals("spd")) {
+      modeCommand = Mode::SpdCtrl;
+      spdCommand = doc["spd"];
+      trqCommand = 0.0;
+      trqLimit = doc["trqLimit"];
+
+    } else if (target.equals("trq")) {
+      modeCommand = Mode::TrqCtrl;
+      trqCommand = doc["trq"];
+      spdCommand = 0.0;
+      spdLimit = doc["spdLimit"];
+
+    } else {
+      modeCommand = Mode::TrqCtrl;
+      trqCommand = 0.0;
+      spdCommand = 0.0;
+    }
   }
 }

@@ -88,6 +88,7 @@ public:
     float spd;              // 速度[rad/s]
     float trq;              // トルク[Nm]
     float integratingAngle; // 積算回転角[rad]
+    Log() : timestamp(0), pos(0.0), spd(0.0), trq(0.0), integratingAngle(0.0) {};
   };
 
   /// @brief Tmotorオブジェクトを生成する
