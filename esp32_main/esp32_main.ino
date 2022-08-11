@@ -85,11 +85,11 @@ void setup()
 
   tmotor.init();
   motor.init(0.8, 0.8); // motor.init(Pゲイン、Iゲイン)  // 220806:Pゲイン1.0以上だと速度ゼロ指令時に震えた
-  /*
+
   // WiFIのsetup
-  // if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
-  //   Serial.println("Failed to configure!");
-  // }
+  if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
+    Serial.println("Failed to configure!");
+  }
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -101,7 +101,7 @@ void setup()
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
   server.begin();
-  */
+
 
   Serial.println("[setup] setup comleted");
   // firstOrderDelayTrq.setTau(TAU_TRQ); // トルクの1次遅れフィルタを宣言
@@ -114,6 +114,12 @@ void setup()
   timerAlarmWrite(timer0, CONTROL_INTERVAL, true);  // 割り込み間隔を設定
   timerAttachInterrupt(timer0, onTimer, true);      // 割り込み関数を登録. edge=trueでエッジトリガ
   timerAlarmEnable(timer0);                         // タイマー割り込みを起動
+
+  delay(1000);
+  power = true;
+  delay(2000);
+  motorControl = true;
+  delay(1000);
 
   Serial.printf("[setup] setup comleted\n");
 }
@@ -196,10 +202,16 @@ void loop()
         log.trq,
         log.spd);
     // ログをwebSocketで配信
-    /*
-    sprintf(json_data, "{\"torque\":%.3f, \"speed\":%.3f, \"position\":%.3f, \"integratingAngl\":%.3f}", log.trq, log.spd, log.pos, log.integratingAngle);
+    char targetStr[12];
+    if (modeCommand == Mode::TrqCtrl) {
+      sprintf(targetStr, "\"trq\"");
+    } else if (modeCommand == Mode::SpdCtrl) {
+      sprintf(targetStr, "\"spd\"");
+    } else {
+      sprintf(targetStr, "null");
+    }
+    sprintf(json_data, "{\"target\":%s,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f}", targetStr, log.trq, log.spd, log.pos, log.integratingAngle);
     ws.textAll(json_data);
-    */
   }
 
   // コンバータの電圧を表示
@@ -262,7 +274,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
 {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-    // Serial.print("Client Message:");
-    // Serial.println((char *)data);
+    Serial.print("Client Message:");
+    Serial.println((char *)data);
   }
 }
