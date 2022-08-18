@@ -44,7 +44,7 @@ float spdCommand = 0.0;    // 速度指令値[rad/s]
 float kpCommand = 0.0;     // 位置フィードバックゲイン
 float kdCommand = 0.0;     // 速度フィードバックゲイン
 float trqCommand = 0.0;    // トルク指令値[Nm]
-float trqLimit = 3.0;
+float trqLimit = 6.0;
 float spdLimit = 2.0;
 
 hw_timer_t *timer0 = NULL;
@@ -151,7 +151,7 @@ void onTimerTask(void *pvParameters)
     if (motorControl) {
       if (modeCommand == Mode::TrqCtrl) { // トルク制御モードのとき
         motor.startTrqCtrl();             // トルク制御を開始
-        motor.setSpdLimit(spdLimit, spdLimit + 1.0);      // 定トルク制御時の速度制限を設定。2.0rad/sに達したらトルクを減少させはじめ、3.0rad/sでトルク0にする
+        motor.setSpdLimit(spdLimit * 0.75, spdLimit);      // 定トルク制御時の速度制限を設定
         motor.setTrqRef(trqCommand);      // トルク目標値を代入
 
       } else if (modeCommand == Mode::SpdCtrl) { // 速度制御モードのとき
@@ -213,7 +213,7 @@ void loop()
       sprintf(targetStr, "null");
     }
     // Serial.printf("modeCommand=%s, spdCommand=%.3f, trqCommand=%.3f, trqLimit=%.3f, spdLimit=%.3f\n", targetStr, spdCommand, trqCommand, trqLimit, spdLimit);
-    sprintf(json_data, "{\"target\":%s,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f}", targetStr, log.trq, log.spd, log.pos, log.integratingAngle);
+    sprintf(json_data, "{\"timestamp\":%d,\"target\":%s,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f}", millis(), targetStr, log.trq, log.spd, log.pos, log.integratingAngle);
     Serial.println(json_data);
     ws.textAll(json_data);
   }
