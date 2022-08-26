@@ -6,14 +6,14 @@ BluetoothSerial SerialBT;
 
 String name = "Machine-ESP32";
 
-const int ledPin = 25;
-const int ledcChannel = 0;
+const int PIN_LED = 25;
+const int CHANNEL_LED = 0;
 
 void setup() {
   Serial.begin(115200);
-  ledcSetup(ledcChannel, 1.0, 16);
-  ledcAttachPin(ledPin, ledcChannel);
-  ledcWrite(ledcChannel, 32768);
+  ledcSetup(CHANNEL_LED, 1.0, 16);
+  ledcAttachPin(PIN_LED, CHANNEL_LED);
+  ledcWrite(CHANNEL_LED, 32768);
   Serial.println("SerialBT begin");
   SerialBT.begin("TensionMeter-ESP32", true); 
   Serial.println("The device started in master mode, make sure remote BT device is on!");
@@ -26,10 +26,10 @@ void setup() {
       Serial.println("Failed to connect. Make sure remote device is available and in range, then restart app."); 
     }
   }
-  ledcWrite(ledcChannel, 0);
-  ledcDetachPin(ledPin);
-  pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, HIGH);
+  ledcWrite(CHANNEL_LED, 0);
+  ledcDetachPin(PIN_LED);
+  pinMode(PIN_LED, OUTPUT);
+  digitalWrite(PIN_LED, HIGH);
   
   static const char* buf = "98765\n";
   unsigned long start = millis();
