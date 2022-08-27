@@ -1,10 +1,11 @@
 #include "MotorController.hpp"
 
+#include "BTTensionMeter.hpp"
 #include "Tmotor.h"
 #include <Arduino.h>
 
-MotorController::MotorController(Tmotor &tmotor)
-  : kp(0.0), ki(0.0), tmotor_(tmotor), object_(CtrlObject::None), trqRef_(0.0), spdLimit_(0.0), spdMax_(0.0), spdRef_(0.0), trqLimit_(0.0), spdDevIntegral_(0.0), calculatedTrq_(0.0)
+MotorController::MotorController(Tmotor &tmotor, BTTensionMeter &btTensionMeter)
+  : kp(0.0), ki(0.0), tmotor_(tmotor), tensionMeter_(btTensionMeter), object_(CtrlObject::None), trqRef_(0.0), spdLimit_(0.0), spdMax_(0.0), spdRef_(0.0), trqLimit_(0.0), spdDevIntegral_(0.0), calculatedTrq_(0.0)
 {
 }
 

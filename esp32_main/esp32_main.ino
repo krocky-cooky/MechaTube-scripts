@@ -6,9 +6,9 @@
 #include <math.h>
 #include <stdio.h>
 
-//定数等
 #include "esp_task.h"
 
+#include "BTTensionMeter.hpp"
 #include "Filter.hpp"
 #include "Mode.hpp"
 #include "MotorController.hpp"
@@ -53,7 +53,9 @@ TaskHandle_t onTimerTaskHandle = NULL;
 SerialCommunication serialCommunication;
 ESP32BuiltinCAN esp32BuiltinCAN(PIN_CANRX, PIN_CANTX);
 Tmotor tmotor(esp32BuiltinCAN, MOTOR_ID, DRIVER_ID);
-MotorController motor(tmotor);
+BluetoothSerial SerialBT;
+BTTensionMeter tensionMeter(SerialBT);
+MotorController motor(tmotor, tensionMeter);
 TouchSwitch touchSwitch(PIN_HANDSWITCH, HANDSWITCH_VOLTAGE_THRESHOLD);
 
 FirstLPF firstOrderDelayTrq;
@@ -88,6 +90,10 @@ void setup()
 
   tmotor.init();
   motor.init(0.8, 0.8); // motor.init(Pゲイン、Iゲイン)  // 220806:Pゲイン1.0以上だと速度ゼロ指令時に震えた
+
+  // Bluetooth,張力計のsetup
+  SerialBT.begin("Machine-ESP32");
+  tensionMeter.begin();
 
   // WiFIのsetup
   if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
@@ -185,6 +191,9 @@ void loop()
     trqCommand = serialCommunication.trq;
     spdCommand = serialCommunication.spd;
   }
+
+  // 張力計から受信
+  tensionMeter.loop();
 
   // CAN受信ログを1secおきにprint
   static unsigned long time_last_print = 0;
