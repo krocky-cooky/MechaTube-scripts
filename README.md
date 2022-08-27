@@ -1,17 +1,21 @@
 # MechaTube CAN通信用
 
-## ダウンロード
+## 含まれるソース
+- `esp32_main`
+  - 筋トレマシン本体のESP32に書き込むコード
+- ※ `webserver_client.html` は削除しました
+  - WebSocketの疎通を確認したいときはChrome拡張機能の[Browser WebSocket Client](https://chrome.google.com/webstore/detail/browser-websocket-client/mdmlhchldhfnfnkfmljgeinlffmdgkjo?hl=ja)を使ってください
+## ダウンロードが必要なArduinoライブラリ
+GitHub 上のライブラリについては、Code > Download ZIP でダウンロード後、Arduino IDE > スケッチ > ライブラリをインクルード > .ZIP形式のライブラリをインストール からインストールして下さい
 
-\<ESPAsyncWebServer\> <br>
-me-no-dev/ESPAsyncWebServer<br>
-https://github.com/me-no-dev/ESPAsyncWebServer<br>
-
-\<AsyncTCP\> <br>
-me-no-dev/AsyncTCP<br>
-https://github.com/me-no-dev/AsyncTCP<br>
-
-\<ArduinoJson\> <br>
-Arduino IDE のライブラリマネージャーからインストール
+- ESPAsyncWebServer
+  - me-no-dev/ESPAsyncWebServer
+  - https://github.com/me-no-dev/ESPAsyncWebServer
+- AsyncTCP
+  - me-no-dev/AsyncTCP
+  - https://github.com/me-no-dev/AsyncTCP
+- ArduinoJson
+  - Arduino IDE のライブラリマネージャーからインストール
 
 ## ESP32 Websocket JSON データ形式
 以下に示すデータを連続してESP32に送り続けること。データ受信が途中で止まった場合は直近の指令が実行され続ける。なお、トルクと速度の符号は、ロープを巻き取る方向を正、ゆるむ方向を負とする
