@@ -28,6 +28,7 @@
 // #define TAU_TRQ 1.0            // 一次遅れ系によるトルク指令の時定数[s]
 // #define TAU_SPD 1.0            // 一次遅れ系による速度指令の時定数[s]
 #define CONTROL_INTERVAL 10000 // 制御周期[us]
+const String BTNAME = "Machine-ESP32";  // Bluetoothデバイス名
 
 // 閾値等
 #define HANDSWITCH_VOLTAGE_THRESHOLD 10.0 // 手元スイッチのオンオフを識別するための、スイッチアナログ入力ピンの電圧閾値 [V]
@@ -91,25 +92,32 @@ void setup()
   tmotor.init();
   motor.init(0.8, 0.8); // motor.init(Pゲイン、Iゲイン)  // 220806:Pゲイン1.0以上だと速度ゼロ指令時に震えた
 
-  // Bluetooth,張力計のsetup
-  SerialBT.begin("Machine-ESP32");
-  tensionMeter.begin();
-
   // WiFIのsetup
   if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
     Serial.println("Failed to configure!");
   }
+  unsigned long wifiBeginTime = millis();
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println("Connecting to WiFi..");
+    if (millis() - wifiBeginTime > 10000) {  // 10sec経ってもWiFiに繋がらなければ再起動
+      ESP.restart();
+    }
   }
   Serial.println(WiFi.localIP());
+
+  // Bluetooth,張力計のsetup
+  SerialBT.begin(BTNAME);
+  Serial.println("init 1");
+  tensionMeter.begin();
+  Serial.println("init 2");
 
   // webserverのセットアップ
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
   server.begin();
+  Serial.println("init 3");
 
 
   Serial.println("[setup] setup comleted");
@@ -197,20 +205,13 @@ void loop()
 
   // CAN受信ログを1secおきにprint
   static unsigned long time_last_print = 0;
-  if (millis() - time_last_print > 100) { // ここの数値をいじるとログ取得間隔[ms]を調整可
+  // if (millis() - time_last_print > 100) { // ここの数値をいじるとログ取得間隔[ms]を調整可
+  if (tensionMeter.available()) {  // 張力計から受信したタイミングでログを飛ばす
     time_last_print = millis();
     Tmotor::Log log;
     while (tmotor.logAvailable() > 0) { // ログが1つ以上たまっていたら
       log = tmotor.logRead();           // ログをひとつ取得
     }
-    // 全ログが出るとうるさいので、最新の数値のみを出すようにした
-    // Serial.printf(
-    //     "{\"timestamp\": %d, \"trq\":%.3f, \"spd\":%.3f, \"pos\":%.3f, \"integratingAngle\": %.3f}\n",
-    //     log.timestamp,
-    //     log.trq,
-    //     log.spd,
-    //     log.pos,
-    //     log.integratingAngle);
 
     // ログをwebSocketで配信 & print
     char targetStr[12];
@@ -222,7 +223,7 @@ void loop()
       sprintf(targetStr, "null");
     }
     // Serial.printf("modeCommand=%s, spdCommand=%.3f, trqCommand=%.3f, trqLimit=%.3f, spdLimit=%.3f\n", targetStr, spdCommand, trqCommand, trqLimit, spdLimit);
-    sprintf(json_data, "{\"timestamp\":%d,\"target\":%s,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f}", millis(), targetStr, log.trq, log.spd, log.pos, log.integratingAngle);
+    sprintf(json_data, "{\"timestamp\":%d,\"target\":%s,\"tension\":%f,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f}", millis(), targetStr, tensionMeter.getTension(), log.trq, log.spd, log.pos, log.integratingAngle);
     Serial.println(json_data);
     ws.textAll(json_data);
   }

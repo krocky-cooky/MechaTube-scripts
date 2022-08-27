@@ -10,6 +10,7 @@ BTTensionMeter::BTTensionMeter(BluetoothSerial &serialBT)
 
 void BTTensionMeter::begin()
 {
+  Serial.println("[BTTensionMeter::begin] complete");
 }
 
 void BTTensionMeter::loop()
