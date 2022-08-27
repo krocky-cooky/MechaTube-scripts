@@ -12,7 +12,8 @@ const int PIN_LED = 25;
 const int CHANNEL_LED = 0;
 const int PIN_DAT = 32;
 const int PIN_CLK = 33;
-const float VAL_TO_GRAM = 0.01; // ロードセルの読み値からグラムに変換する係数
+const long OFFSET = 27468;        // ロードセルの、ゼログラムのときの読み値
+const float VAL_TO_GRAM = 17.765; // ロードセルの読み値からミリグラムに変換する係数
 
 void setup()
 {
@@ -48,14 +49,14 @@ void setup()
 
 void loop()
 {
-  long value = hx711.read();                        // ロードセルの読み値を取得
-  int gram = static_cast<int>(VAL_TO_GRAM * value); // グラム単位に換算
+  long value = hx711.read();                                   // ロードセルの読み値を取得
+  int milligram = static_cast<int>(VAL_TO_GRAM * (value - OFFSET)); // ミリグラム単位に換算
 
-  int checksum = calc_checksum(gram); // チェックサム計算
+  int checksum = calc_checksum(milligram); // チェックサム計算
 
   if (SerialBT.connected(1000)) {
     SerialBT.write(0x02);                         // STX (Start of TX)
-    SerialBT.printf("%05d,%d\n", gram, checksum); // Bluetoothに送信(gramは見やすさのため0を入れて5桁に揃えている)
+    SerialBT.printf("%08d,%d\n", milligram, checksum); // Bluetoothに送信(milligramは見やすさのため0を入れて8桁に揃えている)
   } else {
     Serial.println("Connection lost! Rebooting...");
     ESP.restart();

@@ -22,7 +22,7 @@ private:
   BluetoothSerial &SerialBT_;
   unsigned long lastReceivedMillis_; // 最後に受信した時刻[ms]
   bool available_;                   // 最新値到着フラグ。受信した値がまだgetTension()により読まれていないときtrueになる
-  int tension_;                      // 受信した張力の最新値[g]
+  int tension_;                      // 受信した張力の最新値[mg]
 
   int calc_checksum(int val);
 
@@ -55,7 +55,7 @@ public:
 
   /**
    * @brief Get the latest tension sent from meter.
-   * @return (int) Measured tension [g]
+   * @return (float) Measured tension [g]
    */
-  int getTension();
+  float getTension();
 };

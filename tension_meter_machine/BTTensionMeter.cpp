@@ -55,10 +55,10 @@ bool BTTensionMeter::available()
   return available_;
 }
 
-int BTTensionMeter::getTension()
+float BTTensionMeter::getTension()
 {
-  available_ = false; // 値が読まれたら、最新値到着フラグをクリア
-  return tension_;
+  available_ = false;                          // 値が読まれたら、最新値到着フラグをクリア
+  return static_cast<float>(tension_) * 0.001; // mg単位なので、gに換算
 }
 
 /**
