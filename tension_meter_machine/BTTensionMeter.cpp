@@ -1,6 +1,6 @@
+/*
 #include "BTTensionMeter.hpp"
 
-const size_t BTTensionMeter::BT_MSG_BUFSIZE_ = 32; // Bluetooth受信メッセージをコピーするバッファのサイズ
 const unsigned long BTTensionMeter::TIMEOUT_ = 50; // 直近のメッセージ到着からこの時間[ms]だけ経過しても次のメッセージが来ないとき接続断とみなす
 
 BTTensionMeter::BTTensionMeter(BluetoothSerial &serialBT)
@@ -60,24 +60,4 @@ float BTTensionMeter::getTension()
   available_ = false;                          // 値が読まれたら、最新値到着フラグをクリア
   return static_cast<float>(tension_) * 0.001; // mg単位なので、gに換算
 }
-
-/**
- * @brief 数値を10進数でprintしたときの各桁の和を計算し、下1桁を返す
- * @param val 数値 (例: 16501）
- * @return 各桁の和（例: 3）
- */
-int BTTensionMeter::calc_checksum(int val)
-{
-  constexpr size_t INT_MAX_DIGIT = 12; // intは最長11文字(-2147483648) + null文字
-  char val_str[INT_MAX_DIGIT];
-  memset(val_str, 0x00, INT_MAX_DIGIT); // ゼロ埋めする
-  sprintf(val_str, "%d", val);          // valを10進数の文字列としてval_strにprint
-  int sum = 0;
-  for (size_t i = 0; i < INT_MAX_DIGIT; i++) {
-    if (val_str[i] < '0' || val_str[i] > '9') { // '0'-'9'以外の文字の場合、'0'に置き換える
-      val_str[i] = '0';
-    }
-    sum += static_cast<int>(val_str[i] - '0'); // 和を計算
-  }
-  return (sum - (sum / 10) * 10); // sum の1桁目を返す
-}
+*/
