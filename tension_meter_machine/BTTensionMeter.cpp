@@ -1,63 +1,79 @@
-/*
 #include "BTTensionMeter.hpp"
 
-const unsigned long BTTensionMeter::TIMEOUT_ = 50; // 直近のメッセージ到着からこの時間[ms]だけ経過しても次のメッセージが来ないとき接続断とみなす
+static const unsigned long CONN_TIMEOUT_ = 50; // 直近のメッセージ到着からこの時間[ms]だけ経過しても次のメッセージが来ないとき接続断とみなす
+static BLEClient *pClient_;
+static BLERemoteService *pRemoteService_;
+static BLERemoteCharacteristic *pRemoteCharacteristic_;
+static std::string deviceName_;                  // 張力計のBLEデバイス名
+static BLEAddress address_("00:00:00:00:00:00"); // 張力計のアドレス。Scanで張力計が見つかったときに代入される
+static bool found_;                              // Scanで張力計が見つかったらtrueになるフラグ
+static bool available_;                          // 最新値到着フラグ。受信した値がまだgetTension()により読まれていないときtrueになる
+static int tension_;                             // 受信した張力の最新値[mg]
+static unsigned long lastReceivedMillis_;        // 最後に張力を受信した時刻[ms]
 
-BTTensionMeter::BTTensionMeter(BluetoothSerial &serialBT)
-  : SerialBT_(serialBT), lastReceivedMillis_(0), available_(false), tension_(0)
+class FoundCallbacks : public BLEAdvertisedDeviceCallbacks // 張力計を発見した際に呼び出されるコールバック関数
 {
-}
-
-void BTTensionMeter::begin()
-{
-}
-
-void BTTensionMeter::loop()
-{
-  if (SerialBT_.available()) {
-    if (SerialBT_.read() == 0x02) { // 開始コード STX で始まる場合、有効なメッセージなので読み込む
-
-      char msg[BT_MSG_BUFSIZE_];                            // 受信メッセージをコピーするバッファを確保
-      memset(msg, 0x00, BT_MSG_BUFSIZE_);                   // ゼロ埋め
-      SerialBT_.readBytesUntil('\n', msg, BT_MSG_BUFSIZE_); // LFまで読み込む
-
-      int val = 0;
-      int checksum = 0;
-      sscanf(msg, "%d,%d", &val, &checksum); // 受信メッセージから張力とチェックサムを読み取る
-
-      int mychecksum = calc_checksum(val); // valからチェックサムを計算
-      if (mychecksum == checksum) {        // チェックサム照合が正常であれば
-        lastReceivedMillis_ = millis();    // 受信時刻を記録
-        available_ = true;                 // 最新値到着フラグをセット
-        tension_ = val;                    // 最新値を反映
-      } else {
-        Serial.printf("checksum failure!\n");
-      }
-
-    } else { // 開始コード以外を検出した場合、捨てる
-      while (SerialBT_.available()) {
-        SerialBT_.read();
+  void onResult(BLEAdvertisedDevice advertisedDevice)
+  { // Scanでデバイスを発見したときに呼び出される関数
+    if (advertisedDevice.haveName()) {
+      if (advertisedDevice.getName().compare(deviceName_) == 0) { // 発見したデバイス名が張力計と一致していたら
+        address_ = advertisedDevice.getAddress();
+        found_ = true;
+        advertisedDevice.getScan()->stop();
       }
     }
   }
+};
+
+static void notifyCallback(BLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *data, size_t length, bool isNotify)
+{
+  tension_ = *((int *)data);      // 受信したデータから張力を取得
+  lastReceivedMillis_ = millis(); // 受信時刻を記録
+  available_ = true;
 }
 
-bool BTTensionMeter::connected()
+bool tensionMeterBegin(const char *deviceName, BLEUUID serviceUUID, BLEUUID characteristicUUID, int scanTimeout)
 {
-  if (SerialBT_.connected() && millis() - lastReceivedMillis_ <= TIMEOUT_) {
+  deviceName_ = std::string(deviceName);
+
+  Serial.println("[tensionMeterBegin] Start scanning for BLE devices for 10sec...");
+  BLEScan *pBleScan = BLEDevice::getScan();
+  pBleScan->setAdvertisedDeviceCallbacks(new FoundCallbacks());
+  pBleScan->setActiveScan(true); // デバイス名を取得するためにはactiveScanが必要
+  BLEScanResults bleScanResults = pBleScan->start(scanTimeout);
+
+  if (!found_) { // 張力計を発見できなければ再起動し、先に進まない
+    Serial.println("[tensionMeterBegin] Tension meter was not found.");
+    return false;
+  }
+
+  Serial.printf("[tensionMeterBegin] Tension meter found. Address: %s\n", address_.toString().c_str());
+  pClient_ = BLEDevice::createClient(); // 張力計と通信するためのクライアントを生成
+  if (!pClient_->connect(address_)) {
+    return false;
+  }
+  pRemoteService_ = pClient_->getService(serviceUUID);
+  pRemoteCharacteristic_ = pRemoteService_->getCharacteristic(characteristicUUID);
+  pRemoteCharacteristic_->registerForNotify(notifyCallback);
+  Serial.println("[tensionMeterBegin] Successfully created a client to communicate with tension meter.");
+  return true;
+}
+
+bool tensionMeterConnected()
+{
+  if (millis() - lastReceivedMillis_ <= CONN_TIMEOUT_) {
     return true;
   }
   return false;
 }
 
-bool BTTensionMeter::available()
+bool tensionAvailable()
 {
   return available_;
 }
 
-float BTTensionMeter::getTension()
+int getTension()
 {
-  available_ = false;                          // 値が読まれたら、最新値到着フラグをクリア
-  return static_cast<float>(tension_) * 0.001; // mg単位なので、gに換算
+  available_ = false; // 値が読まれたら、最新値到着フラグをクリア
+  return tension_;    // mg単位なので、gに換算
 }
-*/
