@@ -44,10 +44,13 @@ void peripheralBegin(const char *deviceName, BLEUUID serviceUUID, BLEUUID logCha
   pServer->setCallbacks(new FuncServerCallbacks());
   pService = pServer->createService(serviceUUID);
   pLogCharacteristic = pService->createCharacteristic(logCharacteristicUUID, BLECharacteristic::PROPERTY_NOTIFY);
+  pLogCharacteristic->addDescriptor(new BLE2902()); // BleWinrtDllでnotifyを受信するために必要
   pCommandCharacteristic = pService->createCharacteristic(commandCharacteristicUUID, BLECharacteristic::PROPERTY_WRITE);
+  pCommandCharacteristic->addDescriptor(new BLE2902()); // BleWinrtDllでnotifyを受信するために必要
   pCommandCharacteristic->setCallbacks(new CommandCharacteristicCallbacks());
   pService->start();
   Serial.println("[peripheralBegin] Service started.");
+  
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(serviceUUID);
   pAdvertising->setScanResponse(true);

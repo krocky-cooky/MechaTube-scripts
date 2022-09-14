@@ -1,4 +1,5 @@
 #include <BLEDevice.h>
+#include <BLE2902.h>
 #include <HX711.h>
 
 BLECharacteristic *pCharacteristic;
@@ -44,7 +45,9 @@ void setup()
   pServer->setCallbacks(new FuncServerCallbacks());
   BLEService *pService = pServer->createService(SERVICE_UUID);
   pCharacteristic = pService->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+  pCharacteristic->addDescriptor(new BLE2902()); // BleWinrtDllでnotifyを受信するために必要
   pService->start();
+
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(true);

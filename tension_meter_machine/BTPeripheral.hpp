@@ -6,6 +6,7 @@
  */
 #include <Arduino.h>
 #include <BLEDevice.h>
+#include <BLE2902.h>
 #include <string>
 
 /**
