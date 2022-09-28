@@ -37,8 +37,8 @@
 Mode modeCommand = Mode::TrqCtrl; // 制御対象を表すフラグ. Mode.hppに一覧で記載
 
 // 指令値
-bool power = false;        // コンバータ電源ON/OFF
-bool motorControl = false; // モータ制御モードON/OFF
+bool powerCommand = false; // コンバータ電源ON/OFF
+bool motorCommand = false; // モータ制御モードON/OFF
 float posCommand = 0.0;    // 位置指令値[rad]
 float spdCommand = 0.0;    // 速度指令値[rad/s]
 float kpCommand = 0.0;     // 位置フィードバックゲイン
@@ -46,6 +46,7 @@ float kdCommand = 0.0;     // 速度フィードバックゲイン
 float trqCommand = 0.0;    // トルク指令値[Nm]
 float trqLimit = 6.0;
 float spdLimit = 2.0;
+unsigned int powerOnTime = 0; // コンバータ電源を入れた時刻[ms]: モータへのコマンド送信に利用
 
 hw_timer_t *timer0 = NULL;
 TaskHandle_t onTimerTaskHandle = NULL;
@@ -105,8 +106,6 @@ void setup()
   server.addHandler(&ws);
   server.begin();
 
-
-  Serial.println("[setup] setup comleted");
   // firstOrderDelayTrq.setTau(TAU_TRQ); // トルクの1次遅れフィルタを宣言
   // firstOrderDelaySpd.setTau(TAU_SPD); // 速度の1次遅れフィルタを宣言
 
@@ -118,11 +117,7 @@ void setup()
   timerAttachInterrupt(timer0, onTimer, true);      // 割り込み関数を登録. edge=trueでエッジトリガ
   timerAlarmEnable(timer0);                         // タイマー割り込みを起動
 
-  delay(1000);
-  power = true;
-  delay(2000);
-  motorControl = true;
-  delay(1000);
+  powerCommand = 1; // コンバータを起動
 
   Serial.printf("[setup] setup comleted\n");
 }
@@ -138,49 +133,66 @@ void onTimerTask(void *pvParameters)
   while (1) {
     xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // おまじない。xTaskNotifyFromISRから通知を受けるまで待機
 
-    // 指令値に応じて、モータの電源とモータ制御モードを変更する
-    setPower(power);
-    setControl(motorControl);
-
     // 手元スイッチのON/OFFを取得する
-    bool handSwitch = touchSwitch.getState();
-    float trqSend = 0.0;
-    float spdSend = 0.0;
+    // bool handSwitch = touchSwitch.getState();
 
     // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
-    if (motorControl) {
-      if (modeCommand == Mode::TrqCtrl) { // トルク制御モードのとき
-        motor.startTrqCtrl();             // トルク制御を開始
-        motor.setSpdLimit(spdLimit * 0.75, spdLimit);      // 定トルク制御時の速度制限を設定
-        motor.setTrqRef(trqCommand);      // トルク目標値を代入
+    if (tmotor.getMotorControl() == 1) {
+      if (modeCommand == Mode::TrqCtrl) {             // トルク制御モードのとき
+        motor.startTrqCtrl();                         // トルク制御を開始
+        motor.setSpdLimit(spdLimit * 0.75, spdLimit); // 定トルク制御時の速度制限を設定
+        motor.setTrqRef(trqCommand);                  // トルク目標値を代入
 
       } else if (modeCommand == Mode::SpdCtrl) { // 速度制御モードのとき
         motor.startSpdCtrl();                    // 速度制御を開始
-        motor.setTrqLimit(trqLimit);                  // 定速制御時のトルク上限を設定
+        motor.setTrqLimit(trqLimit);             // 定速制御時のトルク上限を設定
         motor.setSpdRef(spdCommand);             // 速度目標値を代入
 
       } else {
         motor.stopCtrl();
       }
-    } else {            // モータ制御モードに入っていないとき
-      motor.stopCtrl(); // 制御を終了
-    }
 
-    if (digitalRead(PIN_POWER) == HIGH) { // コンバータ電源ON時(=CAN送信できるとき)のみモータ更新
       motor.update(CONTROL_INTERVAL);
+
+      // モータ制御モードに入っていないとき、制御を終了
+    } else {
+      motor.stopCtrl();
     }
   }
 }
 
 void loop()
 {
+  // コンバータ電源を指令に応じて入切する
+  if (powerCommand == true) {
+    digitalWrite(PIN_POWER, HIGH);
+    if (powerOnTime == 0) {
+      powerOnTime = millis(); // 電源ON時刻を記録
+    }
+  } else {
+    if (tmotor.getMotorControl() == 1) {
+      tmotor.sendMotorControl(0);
+    }
+    digitalWrite(PIN_POWER, LOW);
+    powerOnTime = 0; // 電源ON時刻をクリア
+  }
+
+  // モータ制御モードを指令に応じて入切する
+  if (motorCommand == true && tmotor.getMotorControl() == 0) {
+    if (powerOnTime > 0 && millis() - powerOnTime > 3000) { // コンバータ電源ONから3sec経ってからモータ制御モードに移行
+      tmotor.sendMotorControl(1);
+    }
+  } else if (motorCommand == false && tmotor.getMotorControl() == 1) {
+    tmotor.sendMotorControl(0);
+  }
+
   // シリアル通信でコマンドを受信し、反映
   // 現在はつねにserialCommunicationモジュールが保持する指令値を反映するコードになっているので、毎loopごとにcommandが直近のシリアル受信値で上書きされる
   // retval を確認し、0でないときのみserialCommunicationの値を反映するようにすれば、別の方法(webSocket等)で受信したコマンドと共存できるはず
   char retval = serialCommunication.receive();
   if (retval) {
-    power = serialCommunication.power;
-    motorControl = serialCommunication.motorControl;
+    powerCommand = serialCommunication.power;
+    motorCommand = serialCommunication.motorControl;
     modeCommand = serialCommunication.mode;
     trqCommand = serialCommunication.trq;
     spdCommand = serialCommunication.spd;
@@ -225,39 +237,6 @@ void loop()
   delay(1);
 }
 
-void setPower(bool command)
-{
-  if (digitalRead(PIN_POWER) == LOW && command == 1) {
-    digitalWrite(PIN_POWER, HIGH);
-    // Serial.println("[setPower] motor power: ON");  // corepanicするので消した
-  }
-  if (digitalRead(PIN_POWER) == HIGH && command == 0) {
-    if (tmotor.getMotorControl() == 1) {
-      tmotor.sendMotorControl(0);
-    }
-    digitalWrite(PIN_POWER, LOW);
-    // Serial.println("[setPower] motor power: OFF");
-  }
-}
-
-void setControl(bool command)
-{
-  if (command == 1) {
-    digitalWrite(PIN_POWER, HIGH);
-    if (tmotor.getMotorControl() == 0) {
-      tmotor.sendMotorControl(1);
-      // Serial.println("[setControl] motor control mode: ON");
-    }
-  }
-  if (command == 0) {
-    if (tmotor.getMotorControl() == 1) {
-      tmotor.sendCommand(0.0, 0.0, 0.0, 0.0, 0.0);
-      tmotor.sendMotorControl(0);
-      // Serial.println("[setControl] motor control mode: OFF");
-    }
-  }
-}
-
 // websocketをイベントごとに処理
 void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
 {
@@ -282,12 +261,22 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
     Serial.println((char *)data);
   }
 
-  StaticJsonDocument<256> doc;                                // 受信した文字列をjsonにparseするためのバッファ
+  StaticJsonDocument<256> doc;                             // 受信した文字列をjsonにparseするためのバッファ
   DeserializationError error = deserializeJson(doc, data); // JSONにparse
   if (error) {
     Serial.print("[handleWebsocetMessage] deserializeJson() failed: ");
     Serial.println(error.f_str());
     return; // parse時にエラーが出たらそこで終了する
+  }
+
+  if (doc.containsKey("power")) {
+    int powerInt = doc["power"];
+    powerCommand = (powerInt == 1) ? true : false;
+  }
+
+  if (doc.containsKey("motor")) {
+    int motorInt = doc["motor"];
+    motorCommand = (motorInt == 1) ? true : false;
   }
 
   if (doc.containsKey("target")) {
