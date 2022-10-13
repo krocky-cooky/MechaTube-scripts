@@ -34,6 +34,6 @@ bool tensionAvailable();
 
 /**
  * @brief Get the latest tension sent from meter.
- * @return (int) Measured tension [mg]
+ * @return (float) Measured tension [kg]
  */
-int getTension();
+float getTension();
