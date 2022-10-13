@@ -1,5 +1,5 @@
-#include <BLEDevice.h>
 #include <BLE2902.h>
+#include <BLEDevice.h>
 #include <HX711.h>
 
 BLECharacteristic *pCharacteristic;
@@ -13,8 +13,10 @@ const int PIN_LED = 25;
 const int CHANNEL_LED = 0;
 const int PIN_DAT = 32;
 const int PIN_CLK = 33;
-const long OFFSET = 27468;        // ロードセルの、ゼログラムのときの読み値
-const float VAL_TO_GRAM = 17.765; // ロードセルの読み値からミリグラムに変換する係数
+// const long OFFSET = 27468;            // (張力計)ロードセルの、ゼログラムのときの読み値
+// const float VAL_TO_KG = 1.7765e-5;    // (張力計)ロードセルの読み値からキログラムに変換する係数
+const long OFFSET = -2028;          // (握力計)ロードセルの、ゼログラムのときの読み値
+const float VAL_TO_KG = 4.78146e-5; // (握力計)ロードセルの読み値からキログラムに変換する係数
 
 class FuncServerCallbacks : public BLEServerCallbacks
 {
@@ -63,9 +65,12 @@ void setup()
 
 void loop()
 {
-  long value = hx711.read();                                        // ロードセルの読み値を取得
-  int milligram = static_cast<int>(VAL_TO_GRAM * (value - OFFSET)); // ミリグラム単位に換算
-  pCharacteristic->setValue(milligram);                             // Charactersiticに値をセットし送信
+  long value = hx711.read();                                          // ロードセルの読み値を取得
+  float killogram = static_cast<float>(VAL_TO_KG * (value - OFFSET)); // キログラム単位に換算
+  // int valueInt = static_cast<int>(value);
+  char jsonText[32];
+  sprintf(jsonText, "{\"force\": %.6f}", killogram); // json形式で張力を文字列にprint
+  pCharacteristic->setValue(reinterpret_cast<uint8_t *>(jsonText), strlen(jsonText));
   pCharacteristic->notify();
-  Serial.println(milligram);
+  Serial.println(jsonText);
 }
