@@ -46,7 +46,8 @@ float kdCommand = 0.0;     // 速度フィードバックゲイン
 float trqCommand = 0.0;    // トルク指令値[Nm]
 float trqLimit = 6.0;
 float spdLimit = 2.0;
-unsigned int powerOnTime = 0; // コンバータ電源を入れた時刻[ms]: モータへのコマンド送信に利用
+unsigned int powerOnTime = 0;       // コンバータ電源を入れた時刻[ms]: モータへのコマンド送信に利用
+unsigned int motorCtrlSentTime = 0; // 最後にモータ制御モードのenter/exitコマンドを送った時刻[ms]
 
 hw_timer_t *timer0 = NULL;
 TaskHandle_t onTimerTaskHandle = NULL;
@@ -61,8 +62,8 @@ FirstLPF firstOrderDelayTrq;
 FirstLPF firstOrderDelaySpd;
 
 // websocketのオブジェクト
-AsyncWebServer server(80);
-AsyncWebSocket ws("/ws");
+// AsyncWebServer server(80);
+// AsyncWebSocket ws("/ws");
 
 // websocket通信で送るjsonのための文字データ
 char json_data[256];
@@ -102,9 +103,9 @@ void setup()
   Serial.println(WiFi.localIP());
 
   // webserverのセットアップ
-  ws.onEvent(onWsEvent);
-  server.addHandler(&ws);
-  server.begin();
+  // ws.onEvent(onWsEvent);
+  // server.addHandler(&ws);
+  // server.begin();
 
   // firstOrderDelayTrq.setTau(TAU_TRQ); // トルクの1次遅れフィルタを宣言
   // firstOrderDelaySpd.setTau(TAU_SPD); // 速度の1次遅れフィルタを宣言
@@ -181,22 +182,28 @@ void loop()
   // モータ制御モードを指令に応じて入切する
   if (motorCommand == true && tmotor.getMotorControl() == 0) {
     if (powerOnTime > 0 && millis() - powerOnTime > 3000) { // コンバータ電源ONから3sec経ってからモータ制御モードに移行
-      tmotor.sendMotorControl(1);
+      // コンセントが抜けていてモータに電源が供給されていないときにCANコマンドを連続で送り続けるとバグるので、
+      // コマンド送信間隔は1secに1回とする
+      if (millis() - motorCtrlSentTime > 1000) {
+        tmotor.sendMotorControl(1);
+        motorCtrlSentTime = millis();
+      }
     }
   } else if (motorCommand == false && tmotor.getMotorControl() == 1) {
-    tmotor.sendMotorControl(0);
+    if (millis() - motorCtrlSentTime > 1000) {
+      tmotor.sendMotorControl(0);
+      motorCtrlSentTime = millis();
+    }
   }
 
   // シリアル通信でコマンドを受信し、反映
-  // 現在はつねにserialCommunicationモジュールが保持する指令値を反映するコードになっているので、毎loopごとにcommandが直近のシリアル受信値で上書きされる
-  // retval を確認し、0でないときのみserialCommunicationの値を反映するようにすれば、別の方法(webSocket等)で受信したコマンドと共存できるはず
-  char retval = serialCommunication.receive();
-  if (retval) {
-    powerCommand = serialCommunication.power;
-    motorCommand = serialCommunication.motorControl;
-    modeCommand = serialCommunication.mode;
-    trqCommand = serialCommunication.trq;
-    spdCommand = serialCommunication.spd;
+  if (serialCommunication.check()) { // 有効なコマンドが到着していたら
+    String command = serialCommunication.receive();
+    if (!applyJsonMessage(command)) {     // JSONとして解釈を試みる
+      if (!applyRegacyMessage(command)) { // 失敗したらレガシーコマンドとして解釈を試みる
+        Serial.println("[loop] invalid command.");
+      }
+    }
   }
 
   // CAN受信ログを1secおきにprint
@@ -207,14 +214,6 @@ void loop()
     while (tmotor.logAvailable() > 0) { // ログが1つ以上たまっていたら
       log = tmotor.logRead();           // ログをひとつ取得
     }
-    // 全ログが出るとうるさいので、最新の数値のみを出すようにした
-    // Serial.printf(
-    //     "{\"timestamp\": %d, \"trq\":%.3f, \"spd\":%.3f, \"pos\":%.3f, \"integratingAngle\": %.3f}\n",
-    //     log.timestamp,
-    //     log.trq,
-    //     log.spd,
-    //     log.pos,
-    //     log.integratingAngle);
 
     // ログをwebSocketで配信 & print
     char targetStr[12];
@@ -225,10 +224,9 @@ void loop()
     } else {
       sprintf(targetStr, "null");
     }
-    // Serial.printf("modeCommand=%s, spdCommand=%.3f, trqCommand=%.3f, trqLimit=%.3f, spdLimit=%.3f\n", targetStr, spdCommand, trqCommand, trqLimit, spdLimit);
     sprintf(json_data, "{\"timestamp\":%d,\"target\":%s,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f}", millis(), targetStr, log.trq, log.spd, log.pos, log.integratingAngle);
     Serial.println(json_data);
-    ws.textAll(json_data);
+    // ws.textAll(json_data);
   }
 
   // コンバータの電圧を表示
@@ -239,35 +237,41 @@ void loop()
 }
 
 // websocketをイベントごとに処理
-void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
-{
+// void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+// {
 
-  if (type == WS_EVT_CONNECT) {
+//   if (type == WS_EVT_CONNECT) {
 
-    Serial.println("Websocket client connection received");
-  } else if (type == WS_EVT_DISCONNECT) {
+//     Serial.println("Websocket client connection received");
+//   } else if (type == WS_EVT_DISCONNECT) {
 
-    Serial.println("Client disconnected");
-  } else if (type == WS_EVT_DATA) {
-    handleWebSocketMessage(arg, data, len);
-  }
-}
+//     Serial.println("Client disconnected");
+//   } else if (type == WS_EVT_DATA) {
+//     handleWebSocketMessage(arg, data, len);
+//   }
+// }
 
 // クライアントからwebsocketでメッセージを受け取ったら表示
-void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
-{
-  AwsFrameInfo *info = (AwsFrameInfo *)arg;
-  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-    Serial.print("Client Message:");
-    Serial.println((char *)data);
-  }
+// void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
+// {
+//   AwsFrameInfo *info = (AwsFrameInfo *)arg;
+//   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+//     Serial.print("Client Message:");
+//     Serial.println((char *)data);
+//     applyJsonMessage((char *)data);
+//   }
+// }
 
+// JSONメッセージからコマンドを読み取って、反映する
+// parseに成功したらtrue, 失敗したらfalseを返す
+bool applyJsonMessage(String data)
+{
   StaticJsonDocument<256> doc;                             // 受信した文字列をjsonにparseするためのバッファ
   DeserializationError error = deserializeJson(doc, data); // JSONにparse
   if (error) {
     Serial.print("[handleWebsocetMessage] deserializeJson() failed: ");
     Serial.println(error.f_str());
-    return; // parse時にエラーが出たらそこで終了する
+    return false; // parse時にエラーが出たらそこで終了する
   }
 
   if (doc.containsKey("power")) {
@@ -302,4 +306,40 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
       spdCommand = 0.0;
     }
   }
+  return true;
+}
+
+// jsonではない旧来のコマンド文字列（"t0.8" など）を解釈し、反映する。
+// 解釈に成功したらtrue, 失敗したらfalseを返す
+bool applyRegacyMessage(String data)
+{
+  char key = 0;
+  float value = 0.0;
+  sscanf(data.c_str(), "%c%f", &key, &value); // scan the command
+
+  switch (key) { // copy the commanded value
+    case 'p':
+      powerCommand = (value > 0.5) ? true : false; // float value contains small error so it is not exactly equal to 0 or 1 integer
+      return true;
+    case 'm':
+      motorCommand = (value > 0.5) ? true : false;
+      return true;
+    case 't':
+      modeCommand = Mode::TrqCtrl;
+      powerCommand = true;
+      motorCommand = true;
+      trqCommand = value;
+      spdCommand = 0.0;
+      return true;
+    case 's':
+      modeCommand = Mode::SpdCtrl;
+      powerCommand = true;
+      motorCommand = true;
+      trqCommand = 0.0;
+      spdCommand = value;
+      return true;
+    default:
+      return false;
+  }
+  return false;
 }
