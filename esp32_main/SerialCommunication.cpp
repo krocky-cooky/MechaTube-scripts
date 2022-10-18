@@ -17,10 +17,11 @@ bool SerialCommunication::check()
     i++;                            // move the index to the next address
     if (i >= SERIAL_BUFSIZE) i = 0; // if the index exceeds the length of buffer, reset the index to zero
 
-    if (c == '\n' || c == '}') { // 改行でコマンドの終了を検知する
+    if (c == '\n') { // 改行でコマンドの終了を検知する
       i = 0;
       return true;
     }
+    delayMicroseconds(100); // 次の文字が到着するまで若干待ったほうがよい
   }
   return false;
 }

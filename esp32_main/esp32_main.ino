@@ -92,15 +92,15 @@ void setup()
   motor.init(0.8, 0.8); // motor.init(Pゲイン、Iゲイン)  // 220806:Pゲイン1.0以上だと速度ゼロ指令時に震えた
 
   // WiFIのsetup
-  if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
-    Serial.println("Failed to configure!");
-  }
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi..");
-  }
-  Serial.println(WiFi.localIP());
+  // if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
+  //   Serial.println("Failed to configure!");
+  // }
+  // WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  // while (WiFi.status() != WL_CONNECTED) {
+  //   delay(1000);
+  //   Serial.println("Connecting to WiFi..");
+  // }
+  // Serial.println(WiFi.localIP());
 
   // webserverのセットアップ
   // ws.onEvent(onWsEvent);
@@ -269,7 +269,7 @@ bool applyJsonMessage(String data)
   StaticJsonDocument<256> doc;                             // 受信した文字列をjsonにparseするためのバッファ
   DeserializationError error = deserializeJson(doc, data); // JSONにparse
   if (error) {
-    Serial.print("[handleWebsocetMessage] deserializeJson() failed: ");
+    Serial.print("[applyJsonMessage] deserializeJson() failed: ");
     Serial.println(error.f_str());
     return false; // parse時にエラーが出たらそこで終了する
   }
@@ -315,7 +315,7 @@ bool applyRegacyMessage(String data)
 {
   char key = 0;
   float value = 0.0;
-  sscanf(data.c_str(), "%c%f", &key, &value); // scan the command
+  sscanf(data.c_str(), "%c%f\n", &key, &value); // scan the command
 
   switch (key) { // copy the commanded value
     case 'p':
