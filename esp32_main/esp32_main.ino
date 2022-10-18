@@ -118,6 +118,7 @@ void setup()
   timerAlarmEnable(timer0);                         // タイマー割り込みを起動
 
   powerCommand = 1; // コンバータを起動
+  motorCommand = 1; // モータを起動
 
   Serial.printf("[setup] setup comleted\n");
 }
