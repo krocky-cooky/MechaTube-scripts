@@ -8,7 +8,7 @@ static std::string deviceName_;                  // 張力計のBLEデバイス�
 static BLEAddress address_("00:00:00:00:00:00"); // 張力計のアドレス。Scanで張力計が見つかったときに代入される
 static bool found_ = false;                      // Scanで張力計が見つかったらtrueになるフラグ
 static bool available_ = false;                  // 最新値到着フラグ。受信した値がまだgetTension()により読まれていないときtrueになる
-static float tension_ = 0.0;                     // 受信した張力の最新値[mg]
+static float tension_ = 0.0;                     // 受信した張力の最新値[kg]
 static unsigned long lastReceivedMillis_ = 0;    // 最後に張力を受信した時刻[ms]
 
 class FoundCallbacks : public BLEAdvertisedDeviceCallbacks // 張力計を発見した際に呼び出されるコールバック関数
@@ -28,11 +28,11 @@ class FoundCallbacks : public BLEAdvertisedDeviceCallbacks // 張力計を発見
 static void notifyCallback(BLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *data, size_t length, bool isNotify)
 {
   char receivedText[32];
-  memset(receivedText, 0, sizeof(receivedText));     // 確保した配列をゼロ埋め
-  memcpy(receivedText, data, length);                // 受信したdataを転記(dataのままsscanfに食わせると、終端の\0が無いので認識できない)
-  sscanf(receivedText, "{\"force\": %f}", tension_); // 受信したデータから張力を取得
-  lastReceivedMillis_ = millis();                    // 受信時刻を記録
-  available_ = true;                                 // 最新値到着フラグをセット
+  memset(receivedText, 0, sizeof(receivedText));      // 確保した配列をゼロ埋め
+  memcpy(receivedText, data, length);                 // 受信したdataをreceivedTextに転記(dataのままsscanfに食わせると、終端の\0が無いので認識できない)
+  sscanf(receivedText, "{\"force\": %f}", &tension_); // 受信したデータから張力を取得
+  lastReceivedMillis_ = millis();                     // 受信時刻を記録
+  available_ = true;                                  // 最新値到着フラグをセット
 }
 
 bool tensionMeterBegin(const char *deviceName, BLEUUID serviceUUID, BLEUUID characteristicUUID, int scanTimeout)
