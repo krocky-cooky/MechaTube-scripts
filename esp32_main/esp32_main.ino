@@ -37,8 +37,6 @@
 Mode modeCommand = Mode::TrqCtrl; // 制御対象を表すフラグ. Mode.hppに一覧で記載
 
 // 指令値
-bool powerCommand = false; // コンバータ電源ON/OFF
-bool motorCommand = false; // モータ制御モードON/OFF
 float posCommand = 0.0;    // 位置指令値[rad]
 float spdCommand = 0.0;    // 速度指令値[rad/s]
 float kpCommand = 0.0;     // 位置フィードバックゲイン
@@ -46,8 +44,6 @@ float kdCommand = 0.0;     // 速度フィードバックゲイン
 float trqCommand = 0.0;    // トルク指令値[Nm]
 float trqLimit = 6.0;
 float spdLimit = 2.0;
-unsigned int powerOnTime = 0;       // コンバータ電源を入れた時刻[ms]: モータへのコマンド送信に利用
-unsigned int motorCtrlSentTime = 0; // 最後にモータ制御モードのenter/exitコマンドを送った時刻[ms]
 
 hw_timer_t *timer0 = NULL;
 TaskHandle_t onTimerTaskHandle = NULL;
@@ -118,8 +114,9 @@ void setup()
   timerAttachInterrupt(timer0, onTimer, true);      // 割り込み関数を登録. edge=trueでエッジトリガ
   timerAlarmEnable(timer0);                         // タイマー割り込みを起動
 
-  powerCommand = 1; // コンバータを起動
-  motorCommand = 1; // モータを起動
+  digitalWrite(PIN_POWER, HIGH); // コンバータを起動
+  delay(5000);
+  tmotor.sendMotorControl(1); // モータを起動
 
   Serial.printf("[setup] setup comleted\n");
 }
@@ -165,37 +162,6 @@ void onTimerTask(void *pvParameters)
 
 void loop()
 {
-  // コンバータ電源を指令に応じて入切する
-  if (powerCommand == true) {
-    digitalWrite(PIN_POWER, HIGH);
-    if (powerOnTime == 0) {
-      powerOnTime = millis(); // 電源ON時刻を記録
-    }
-  } else {
-    if (tmotor.getMotorControl() == 1) {
-      tmotor.sendMotorControl(0);
-    }
-    digitalWrite(PIN_POWER, LOW);
-    powerOnTime = 0; // 電源ON時刻をクリア
-  }
-
-  // モータ制御モードを指令に応じて入切する
-  if (motorCommand == true && tmotor.getMotorControl() == 0) {
-    if (powerOnTime > 0 && millis() - powerOnTime > 3000) { // コンバータ電源ONから3sec経ってからモータ制御モードに移行
-      // コンセントが抜けていてモータに電源が供給されていないときにCANコマンドを連続で送り続けるとバグるので、
-      // コマンド送信間隔は1secに1回とする
-      if (millis() - motorCtrlSentTime > 1000) {
-        tmotor.sendMotorControl(1);
-        motorCtrlSentTime = millis();
-      }
-    }
-  } else if (motorCommand == false && tmotor.getMotorControl() == 1) {
-    if (millis() - motorCtrlSentTime > 1000) {
-      tmotor.sendMotorControl(0);
-      motorCtrlSentTime = millis();
-    }
-  }
-
   // シリアル通信でコマンドを受信し、反映
   if (serialCommunication.check()) { // 有効なコマンドが到着していたら
     String command = serialCommunication.receive();
@@ -269,19 +235,27 @@ bool applyJsonMessage(String data)
   StaticJsonDocument<256> doc;                             // 受信した文字列をjsonにparseするためのバッファ
   DeserializationError error = deserializeJson(doc, data); // JSONにparse
   if (error) {
-    Serial.print("[applyJsonMessage] deserializeJson() failed: ");
-    Serial.println(error.f_str());
+    // Serial.print("[applyJsonMessage] deserializeJson() failed: ");
+    // Serial.println(error.f_str());
     return false; // parse時にエラーが出たらそこで終了する
   }
 
   if (doc.containsKey("power")) {
     int powerInt = doc["power"];
-    powerCommand = (powerInt == 1) ? true : false;
+    if (powerInt == 1) {
+      digitalWrite(PIN_POWER, HIGH);
+    } else {
+      digitalWrite(PIN_POWER, LOW);
+    }
   }
 
   if (doc.containsKey("motor")) {
     int motorInt = doc["motor"];
-    motorCommand = (motorInt == 1) ? true : false;
+    if (motorInt == 1) {
+      tmotor.sendMotorControl(1);
+    } else {
+      tmotor.sendMotorControl(0);
+    }
   }
 
   if (doc.containsKey("target")) {
@@ -304,6 +278,7 @@ bool applyJsonMessage(String data)
       modeCommand = Mode::TrqCtrl;
       trqCommand = 0.0;
       spdCommand = 0.0;
+      return false;  // targetがspdでもtrqでもないのはエラー
     }
   }
   return true;
@@ -319,22 +294,26 @@ bool applyRegacyMessage(String data)
 
   switch (key) { // copy the commanded value
     case 'p':
-      powerCommand = (value > 0.5) ? true : false; // float value contains small error so it is not exactly equal to 0 or 1 integer
+      if (value > 0.5) {  // value==1のときコンバータ電源ON
+        digitalWrite(PIN_POWER, HIGH);
+      } else {
+        digitalWrite(PIN_POWER, LOW);
+      }
       return true;
     case 'm':
-      motorCommand = (value > 0.5) ? true : false;
+      if (value > 0.5) {  // value==1のときモータ制御開始コマンドを送信
+        tmotor.sendMotorControl(1);
+      } else {
+        tmotor.sendMotorControl(0);
+      }
       return true;
     case 't':
       modeCommand = Mode::TrqCtrl;
-      powerCommand = true;
-      motorCommand = true;
       trqCommand = value;
       spdCommand = 0.0;
       return true;
     case 's':
       modeCommand = Mode::SpdCtrl;
-      powerCommand = true;
-      motorCommand = true;
       trqCommand = 0.0;
       spdCommand = value;
       return true;
