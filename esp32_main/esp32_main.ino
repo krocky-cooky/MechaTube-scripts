@@ -3,10 +3,9 @@
 #include <CAN.h>
 #include <ESPAsyncWebServer.h>
 #include <WiFi.h>
+#include <esp_task.h>
 #include <math.h>
 #include <stdio.h>
-
-#include "esp_task.h"
 
 #include "BTTensionMeter.hpp"
 #include "Filter.hpp"
@@ -28,7 +27,11 @@
 // #define TAU_TRQ 1.0            // 一次遅れ系によるトルク指令の時定数[s]
 // #define TAU_SPD 1.0            // 一次遅れ系による速度指令の時定数[s]
 #define CONTROL_INTERVAL 10000 // 制御周期[us]
-const String BTNAME = "Machine-ESP32";  // Bluetoothデバイス名
+
+const char MACHINE_DEVICE_NAME[] = "Machine-ESP32";               // マシンのBluetoothデバイス名
+const char TENSIONMETER_DEVICE_NAME[] = "TensionMeter";           // 張力計の device name
+const BLEUUID TENSIONMETER_SERVICE_UUID((uint16_t)0x181D);        // Weight Scale (定義済UUID)
+const BLEUUID TENSIONMETER_CHARACTERISTIC_UUID((uint16_t)0x2A98); // Weight (定義済UUID)
 
 // 閾値等
 #define HANDSWITCH_VOLTAGE_THRESHOLD 10.0 // 手元スイッチのオンオフを識別するための、スイッチアナログ入力ピンの電圧閾値 [V]
@@ -38,11 +41,11 @@ const String BTNAME = "Machine-ESP32";  // Bluetoothデバイス名
 Mode modeCommand = Mode::TrqCtrl; // 制御対象を表すフラグ. Mode.hppに一覧で記載
 
 // 指令値
-float posCommand = 0.0;    // 位置指令値[rad]
-float spdCommand = 0.0;    // 速度指令値[rad/s]
-float kpCommand = 0.0;     // 位置フィードバックゲイン
-float kdCommand = 0.0;     // 速度フィードバックゲイン
-float trqCommand = 0.0;    // トルク指令値[Nm]
+float posCommand = 0.0; // 位置指令値[rad]
+float spdCommand = 0.0; // 速度指令値[rad/s]
+float kpCommand = 0.0;  // 位置フィードバックゲイン
+float kdCommand = 0.0;  // 速度フィードバックゲイン
+float trqCommand = 0.0; // トルク指令値[Nm]
 float trqLimit = 6.0;
 float spdLimit = 2.0;
 
@@ -52,9 +55,7 @@ TaskHandle_t onTimerTaskHandle = NULL;
 SerialCommunication serialCommunication;
 ESP32BuiltinCAN esp32BuiltinCAN(PIN_CANRX, PIN_CANTX);
 Tmotor tmotor(esp32BuiltinCAN, MOTOR_ID, DRIVER_ID);
-BluetoothSerial SerialBT;
-BTTensionMeter tensionMeter(SerialBT);
-MotorController motor(tmotor, tensionMeter);
+MotorController motor(tmotor);
 TouchSwitch touchSwitch(PIN_HANDSWITCH, HANDSWITCH_VOLTAGE_THRESHOLD);
 
 FirstLPF firstOrderDelayTrq;
@@ -90,22 +91,31 @@ void setup()
   tmotor.init();
   motor.init(0.8, 0.8); // motor.init(Pゲイン、Iゲイン)  // 220806:Pゲイン1.0以上だと速度ゼロ指令時に震えた
 
+  // 張力計とのBLE通信のsetup
+  Serial.println("[setup] Initalizing BLE...");
+  BLEDevice::init(MACHINE_DEVICE_NAME);
+  Serial.println("[setup] Scanning tension meter...");
+  bool connected = tensionMeterBegin(TENSIONMETER_DEVICE_NAME, TENSIONMETER_SERVICE_UUID, TENSIONMETER_CHARACTERISTIC_UUID, 10);
+  if (!connected) {
+    Serial.println("[setup] Tension meter is not found. Tension log is set to zero");
+  }
+  Serial.println("@@10");
+
+
   // WiFIのsetup
   // if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
   //   Serial.println("Failed to configure!");
   // }
+  // unsigned long wifiBeginTime = millis();
   // WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   // while (WiFi.status() != WL_CONNECTED) {
   //   delay(1000);
   //   Serial.println("Connecting to WiFi..");
+  //   if (millis() - wifiBeginTime > 10000) {  // 10sec経ってもWiFiに繋がらなければ再起動
+  //     ESP.restart();
+  //   }
   // }
   // Serial.println(WiFi.localIP());
-
-  // Bluetooth,張力計のsetup
-  SerialBT.begin(BTNAME);
-  Serial.println("init 1");
-  tensionMeter.begin();
-  Serial.println("init 2");
 
   // webserverのセットアップ
   // ws.onEvent(onWsEvent);
@@ -117,6 +127,8 @@ void setup()
 
   xTaskCreatePinnedToCore(onTimerTask, "onTimerTask", 8192, NULL, ESP_TASK_TIMER_PRIO - 1, &onTimerTaskHandle, APP_CPU_NUM); // タイマー割り込みで実行するタスクを登録
 
+  Serial.println("@@11");
+
   uint16_t prescaler = getApbFrequency() / 1000000; // タイマーのカウントアップ周波数が1MHzとなるようプリスケーラを計算
   timer0 = timerBegin(0, prescaler, true);          // タイマーを初期化
   timerAlarmWrite(timer0, CONTROL_INTERVAL, true);  // 割り込み間隔を設定
@@ -124,8 +136,14 @@ void setup()
   timerAlarmEnable(timer0);                         // タイマー割り込みを起動
 
   digitalWrite(PIN_POWER, HIGH); // コンバータを起動
+  Serial.println("@@12");
+
   delay(5000);
+  Serial.println("@@13");
+
   tmotor.sendMotorControl(1); // モータを起動
+  Serial.println("@@21");
+
 
   Serial.printf("[setup] setup comleted\n");
 }
@@ -181,18 +199,19 @@ void loop()
     }
   }
 
-  // 張力計から受信
-  tensionMeter.loop();
-
   // CAN受信ログを1secおきにprint
   static unsigned long time_last_print = 0;
-  // if (millis() - time_last_print > 100) { // ここの数値をいじるとログ取得間隔[ms]を調整可
-  if (tensionMeter.available()) {  // 張力計から受信したタイミングでログを飛ばす
+  if (millis() - time_last_print > 100) { // ここの数値をいじるとログ取得間隔[ms]を調整可
+                                          // if (tensionAvailable()) { // 張力計から受信したタイミングでログを飛ばす場合はこれ
     time_last_print = millis();
+
+    // モーターのログ取得
     Tmotor::Log log;
     while (tmotor.logAvailable() > 0) { // ログが1つ以上たまっていたら
       log = tmotor.logRead();           // ログをひとつ取得
     }
+    // 張力計から張力取得
+    float tension = getTension();
 
     // ログをwebSocketで配信 & print
     char targetStr[12];
@@ -203,7 +222,7 @@ void loop()
     } else {
       sprintf(targetStr, "null");
     }
-    sprintf(json_data, "{\"timestamp\":%d,\"target\":%s,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f}", millis(), targetStr, log.trq, log.spd, log.pos, log.integratingAngle);
+    sprintf(json_data, "{\"timestamp\":%d,\"target\":%s,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f,\"tension\":%.6f}", millis(), targetStr, log.trq, log.spd, log.pos, log.integratingAngle, tension);
     Serial.println(json_data);
     // ws.textAll(json_data);
   }
@@ -291,7 +310,7 @@ bool applyJsonMessage(String data)
       modeCommand = Mode::TrqCtrl;
       trqCommand = 0.0;
       spdCommand = 0.0;
-      return false;  // targetがspdでもtrqでもないのはエラー
+      return false; // targetがspdでもtrqでもないのはエラー
     }
   }
   return true;
@@ -307,14 +326,14 @@ bool applyRegacyMessage(String data)
 
   switch (key) { // copy the commanded value
     case 'p':
-      if (value > 0.5) {  // value==1のときコンバータ電源ON
+      if (value > 0.5) { // value==1のときコンバータ電源ON
         digitalWrite(PIN_POWER, HIGH);
       } else {
         digitalWrite(PIN_POWER, LOW);
       }
       return true;
     case 'm':
-      if (value > 0.5) {  // value==1のときモータ制御開始コマンドを送信
+      if (value > 0.5) { // value==1のときモータ制御開始コマンドを送信
         tmotor.sendMotorControl(1);
       } else {
         tmotor.sendMotorControl(0);

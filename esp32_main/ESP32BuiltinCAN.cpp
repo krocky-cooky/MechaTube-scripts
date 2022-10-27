@@ -25,15 +25,19 @@ int ESP32BuiltinCAN::begin(long baudrate)
 
 int ESP32BuiltinCAN::send(int id, const uint8_t *data, size_t size) const
 {
+  Serial.println("@@17");
   portENTER_CRITICAL(&canMutex_);
   if (CAN.beginPacket(id)) {
+    Serial.println("@@18");
     CAN.write(data, size);
     if (CAN.endPacket()) {
+      Serial.println("@@19");
       portEXIT_CRITICAL(&canMutex_);
       return 1;
     }
   }
   portEXIT_CRITICAL(&canMutex_);
+  Serial.println("@@20");
   return 0;
 }
 

@@ -33,7 +33,6 @@ void loop() {
 
 #pragma once
 
-#include "BTTensionMeter.hpp"
 #include "Tmotor.h"
 #include <Arduino.h>
 
@@ -49,9 +48,8 @@ public:
   /**
    * @brief Construct a new Motor Controller object
    * @param tmotor Tmotorインスタンス
-   * @param btTensionMeter BTTensionMeterインスタンス
    */
-  MotorController(Tmotor &tmotor, BTTensionMeter &btTensionMeter);
+  MotorController(Tmotor &tmotor);
 
   /**
    * @brief 変数初期化処理。setup()内と、制御を完全にリセットしたいときに実行する
@@ -116,7 +114,6 @@ private:
   };
 
   Tmotor &tmotor_;
-  BTTensionMeter &tensionMeter_;
   CtrlObject object_; // 制御対象
 
   // トルク制御で使う変数
