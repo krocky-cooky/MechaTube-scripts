@@ -1,6 +1,5 @@
 #include "MotorController.hpp"
 
-#include "BTTensionMeter.hpp"
 #include "Tmotor.h"
 #include <Arduino.h>
 

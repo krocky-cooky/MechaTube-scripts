@@ -24,8 +24,7 @@
 #define PIN_POWER 26
 #define PIN_HANDSWITCH 35
 #define KD 1.0
-// #define TAU_TRQ 1.0            // 一次遅れ系によるトルク指令の時定数[s]
-// #define TAU_SPD 1.0            // 一次遅れ系による速度指令の時定数[s]
+#define TAU_TENSION 0.1        // 張力計のLPF時定数[s]
 #define CONTROL_INTERVAL 10000 // 制御周期[us]
 
 const char MACHINE_DEVICE_NAME[] = "Machine-ESP32";               // マシンのBluetoothデバイス名
@@ -58,8 +57,7 @@ Tmotor tmotor(esp32BuiltinCAN, MOTOR_ID, DRIVER_ID);
 MotorController motor(tmotor);
 TouchSwitch touchSwitch(PIN_HANDSWITCH, HANDSWITCH_VOLTAGE_THRESHOLD);
 
-FirstLPF firstOrderDelayTrq;
-FirstLPF firstOrderDelaySpd;
+FirstLPF tensionLPF;
 
 // websocketのオブジェクト
 // AsyncWebServer server(80);
@@ -99,8 +97,6 @@ void setup()
   if (!connected) {
     Serial.println("[setup] Tension meter is not found. Tension log is set to zero");
   }
-  Serial.println("@@10");
-
 
   // WiFIのsetup
   // if (!WiFi.config(ESP32_IP_ADDRESS, ESP32_GATEWAY, ESP32_SUBNET_MASK)) {
@@ -122,12 +118,9 @@ void setup()
   // server.addHandler(&ws);
   // server.begin();
 
-  // firstOrderDelayTrq.setTau(TAU_TRQ); // トルクの1次遅れフィルタを宣言
-  // firstOrderDelaySpd.setTau(TAU_SPD); // 速度の1次遅れフィルタを宣言
+  tensionLPF.setTau(TAU_TENSION);
 
   xTaskCreatePinnedToCore(onTimerTask, "onTimerTask", 8192, NULL, ESP_TASK_TIMER_PRIO - 1, &onTimerTaskHandle, APP_CPU_NUM); // タイマー割り込みで実行するタスクを登録
-
-  Serial.println("@@11");
 
   uint16_t prescaler = getApbFrequency() / 1000000; // タイマーのカウントアップ周波数が1MHzとなるようプリスケーラを計算
   timer0 = timerBegin(0, prescaler, true);          // タイマーを初期化
@@ -136,14 +129,8 @@ void setup()
   timerAlarmEnable(timer0);                         // タイマー割り込みを起動
 
   digitalWrite(PIN_POWER, HIGH); // コンバータを起動
-  Serial.println("@@12");
-
   delay(5000);
-  Serial.println("@@13");
-
   tmotor.sendMotorControl(1); // モータを起動
-  Serial.println("@@21");
-
 
   Serial.printf("[setup] setup comleted\n");
 }
@@ -199,6 +186,14 @@ void loop()
     }
   }
 
+  // 張力計からサンプリングを行いLPFにかける
+  static unsigned long time_last_sample = 0;
+  if (tensionAvailable()) {
+    unsigned long now = millis();
+    tensionLPF.update(getTension(), 0.001 * (now - time_last_sample));
+    time_last_sample = now;
+  }
+
   // CAN受信ログを1secおきにprint
   static unsigned long time_last_print = 0;
   if (millis() - time_last_print > 100) { // ここの数値をいじるとログ取得間隔[ms]を調整可
@@ -210,8 +205,8 @@ void loop()
     while (tmotor.logAvailable() > 0) { // ログが1つ以上たまっていたら
       log = tmotor.logRead();           // ログをひとつ取得
     }
-    // 張力計から張力取得
-    float tension = getTension();
+    // 張力計の最新値(LPFによるフィルタリング後)を取得
+    float tension = tensionLPF.getLatest();
 
     // ログをwebSocketで配信 & print
     char targetStr[12];

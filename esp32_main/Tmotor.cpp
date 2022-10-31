@@ -69,14 +69,11 @@ int Tmotor::sendCommand(float pos, float spd, float kp, float kd, float trq)
 int Tmotor::sendMotorControl(bool command)
 {
   if (command == 1 && motorCtrl_ == 0) {
-    Serial.println("@@14");
     if (!CAN_.send(MOTOR_ID_, msgEnter, sizeof(msgEnter))) return 0;
   } else if (command == 0 && motorCtrl_ == 1) {
-    Serial.println("@@15");
     if (!CAN_.send(MOTOR_ID_, msgExit, sizeof(msgExit))) return 0;
   }
   motorCtrl_ = command;
-  Serial.println("@@16");
   return 1;
 }
 
