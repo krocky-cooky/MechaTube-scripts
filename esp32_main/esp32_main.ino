@@ -297,12 +297,15 @@ bool applyRegacyMessage(String data)
       if (value > 0.5) {  // value==1のときコンバータ電源ON
         digitalWrite(PIN_POWER, HIGH);
       } else {
+        tmotor.sendMotorControl(0); // コンバータ切るときは必ずモータも切る(でないと次にモーターが立ち上がらないことがある)
         digitalWrite(PIN_POWER, LOW);
       }
       return true;
     case 'm':
       if (value > 0.5) {  // value==1のときモータ制御開始コマンドを送信
-        tmotor.sendMotorControl(1);
+        if (digitalRead(PIN_POWER) == HIGH) { // コンバータON時のみモータに起動指令
+          tmotor.sendMotorControl(1);
+        }
       } else {
         tmotor.sendMotorControl(0);
       }
