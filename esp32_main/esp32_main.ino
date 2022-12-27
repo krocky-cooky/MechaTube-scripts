@@ -46,7 +46,7 @@ float kpCommand = 0.0;  // 位置フィードバックゲイン
 float kdCommand = 0.0;  // 速度フィードバックゲイン
 float trqCommand = 0.0; // トルク指令値[Nm]
 float trqLimit = 6.0;
-float spdLimit = 2.0;
+float spdLimit = 10.0;
 
 hw_timer_t *timer0 = NULL;
 TaskHandle_t onTimerTaskHandle = NULL;
@@ -87,7 +87,7 @@ void setup()
   }
 
   tmotor.init();
-  motor.init(0.8, 0.8); // motor.init(Pゲイン、Iゲイン)  // 220806:Pゲイン1.0以上だと速度ゼロ指令時に震えた
+  motor.init(0.1, 0.1); // motor.init(Pゲイン、Iゲイン)  // 220806:Pゲイン1.0以上だと速度ゼロ指令時に震えた
 
   // 張力計とのBLE通信のsetup
   Serial.println("[setup] Initalizing BLE...");
@@ -147,10 +147,10 @@ void onTimerTask(void *pvParameters)
     xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // おまじない。xTaskNotifyFromISRから通知を受けるまで待機
 
     // 手元スイッチのON/OFFを取得する
-    // bool handSwitch = touchSwitch.getState();
+    bool handSwitch = touchSwitch.getState();
 
     // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
-    /*
+    
     if (tmotor.getMotorControl() == 1) {
       if (modeCommand == Mode::TrqCtrl) {             // トルク制御モードのとき
         motor.startTrqCtrl();                         // トルク制御を開始
@@ -172,7 +172,7 @@ void onTimerTask(void *pvParameters)
     } else {
       motor.stopCtrl();
     }
-    */
+    
   }
 }
 
@@ -203,7 +203,7 @@ void loop()
     time_last_print = millis();
 
     // モーターのログ取得
-    /*
+    
     Tmotor::Log log;
     while (tmotor.logAvailable() > 0) { // ログが1つ以上たまっていたら
       log = tmotor.logRead();           // ログをひとつ取得
@@ -222,7 +222,7 @@ void loop()
     }
     sprintf(json_data, "{\"timestamp\":%d,\"target\":%s,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f,\"tension\":%.6f}", millis(), targetStr, log.trq, log.spd, log.pos, log.integratingAngle, tension);
     Serial.println(json_data);
-    */
+    
     // ws.textAll(json_data);
   }
 
@@ -263,7 +263,7 @@ void loop()
 // parseに成功したらtrue, 失敗したらfalseを返す
 bool applyJsonMessage(String data)
 {
-  /*
+  
   StaticJsonDocument<256> doc;                             // 受信した文字列をjsonにparseするためのバッファ
   DeserializationError error = deserializeJson(doc, data); // JSONにparse
   if (error) {
@@ -313,7 +313,7 @@ bool applyJsonMessage(String data)
       return false; // targetがspdでもtrqでもないのはエラー
     }
   }
-  */
+  
   return true;
 }
 
@@ -321,7 +321,7 @@ bool applyJsonMessage(String data)
 // 解釈に成功したらtrue, 失敗したらfalseを返す
 bool applyRegacyMessage(String data)
 {
-  /*
+  
   char key = 0;
   float value = 0.0;
   sscanf(data.c_str(), "%c%f\n", &key, &value); // scan the command
@@ -354,6 +354,6 @@ bool applyRegacyMessage(String data)
     default:
       return false;
   }
-  */
+  
   return false;
 }

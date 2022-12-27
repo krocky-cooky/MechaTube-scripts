@@ -5,3 +5,4 @@
 Secrets.h
 ArduinoOutput
 ArduinoOutput/*
+/libraries/
