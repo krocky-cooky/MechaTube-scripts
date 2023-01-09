@@ -198,7 +198,7 @@ void loop()
 
   // CAN受信ログを1secおきにprint
   static unsigned long time_last_print = 0;
-  if (millis() - time_last_print > 100) { // ここの数値をいじるとログ取得間隔[ms]を調整可
+  if (millis() - time_last_print > 16) { // ここの数値をいじるとログ取得間隔[ms]を調整可
                                           // if (tensionAvailable()) { // 張力計から受信したタイミングでログを飛ばす場合はこれ
     time_last_print = millis();
 
@@ -221,6 +221,7 @@ void loop()
       sprintf(targetStr, "null");
     }
     sprintf(json_data, "{\"timestamp\":%d,\"target\":%s,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f,\"tension\":%.6f}", millis(), targetStr, log.trq, log.spd, log.pos, log.integratingAngle, tension);
+    // sprintf(json_data, "{\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f,\"tension\":%.6f}", log.trq, log.spd, log.pos, log.integratingAngle, tension);
     Serial.println(json_data);
     
     // ws.textAll(json_data);
