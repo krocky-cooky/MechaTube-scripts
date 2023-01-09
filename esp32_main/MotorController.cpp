@@ -77,6 +77,7 @@ void MotorController::update(unsigned long interval)
 {
   if (object_ == CtrlObject::None) {
     calculatedTrq_ = 0.0;
+    tmotor_.sendCommand(0, 0, 0, 0, calculatedTrq_);
 
   } else if (object_ == CtrlObject::SpdLimitedTrq) {
     if ((tmotor_.trqSent >= 0.0 && tmotor_.spdReceived > spdMax_) ||
@@ -88,15 +89,16 @@ void MotorController::update(unsigned long interval)
     } else {
       calculatedTrq_ = trqRef_;
     }
+    tmotor_.sendCommand(0, 0, 0, 0, calculatedTrq_);
 
   } else if (object_ == CtrlObject::Spd) {
     float spdDev = spdRef_ - tmotor_.spdReceived;                                       // 速度の目標値からの偏差
     spdDevIntegral_ += (abs(calculatedTrq_) < trqLimit_) ? spdDev * interval / 1e6 : 0; // 速度偏差を積分(Anti-windupつき)
-    calculatedTrq_ = kp * spdDev + ki * spdDevIntegral_;
+    calculatedTrq_ = ki * spdDevIntegral_;                                              // 積分制御のトルクを計算
+    tmotor_.sendCommand(0, spdRef_, 0, kp, calculatedTrq_);                             // 比例制御はモータのKDを使い、積分制御は自分たちで行う
 
   } else {
     calculatedTrq_ = 0.0;
+    tmotor_.sendCommand(0, 0, 0, 0, calculatedTrq_);
   }
-
-  tmotor_.sendCommand(0, 0, 0, 0, calculatedTrq_);
 }

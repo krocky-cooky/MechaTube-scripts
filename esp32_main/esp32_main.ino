@@ -87,7 +87,7 @@ void setup()
   }
 
   tmotor.init();
-  motor.init(0.1, 0.1); // motor.init(Pゲイン、Iゲイン)  // 220806:Pゲイン1.0以上だと速度ゼロ指令時に震えた
+  motor.init(1.5, 3.0); // motor.init(速度制御のPゲイン、速度制御のIゲイン);
 
   // 張力計とのBLE通信のsetup
   Serial.println("[setup] Initalizing BLE...");
