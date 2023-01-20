@@ -14,7 +14,6 @@
 #include "Secrets.h"
 #include "SerialCommunication.hpp"
 #include "Tmotor.h"
-#include "TouchSwitch.hpp"
 
 // 定数等
 #define MOTOR_ID 1
@@ -22,7 +21,6 @@
 #define PIN_CANRX 32
 #define PIN_CANTX 33
 #define PIN_POWER 26
-#define PIN_HANDSWITCH 35
 #define KD 1.0
 #define TAU_TENSION 0.1        // 張力計のLPF時定数[s]
 #define CONTROL_INTERVAL 10000 // 制御周期[us]
@@ -33,7 +31,6 @@ const BLEUUID TENSIONMETER_SERVICE_UUID((uint16_t)0x181D);        // Weight Scal
 const BLEUUID TENSIONMETER_CHARACTERISTIC_UUID((uint16_t)0x2A98); // Weight (定義済UUID)
 
 // 閾値等
-#define HANDSWITCH_VOLTAGE_THRESHOLD 10.0 // 手元スイッチのオンオフを識別するための、スイッチアナログ入力ピンの電圧閾値 [V]
 #define MAX_LOGNUM 1024                   // 筋力測定の最大ログ数
 
 // フラグ等
@@ -55,7 +52,6 @@ SerialCommunication serialCommunication;
 ESP32BuiltinCAN esp32BuiltinCAN(PIN_CANRX, PIN_CANTX);
 Tmotor tmotor(esp32BuiltinCAN, MOTOR_ID, DRIVER_ID);
 MotorController motor(tmotor);
-TouchSwitch touchSwitch(PIN_HANDSWITCH, HANDSWITCH_VOLTAGE_THRESHOLD);
 
 FirstLPF tensionLPF;
 
@@ -145,9 +141,6 @@ void onTimerTask(void *pvParameters)
 {
   while (1) {
     xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // おまじない。xTaskNotifyFromISRから通知を受けるまで待機
-
-    // 手元スイッチのON/OFFを取得する
-    bool handSwitch = touchSwitch.getState();
 
     // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
     
