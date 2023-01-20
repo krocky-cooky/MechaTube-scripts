@@ -31,19 +31,20 @@ const BLEUUID TENSIONMETER_SERVICE_UUID((uint16_t)0x181D);        // Weight Scal
 const BLEUUID TENSIONMETER_CHARACTERISTIC_UUID((uint16_t)0x2A98); // Weight (定義済UUID)
 
 // 閾値等
-#define MAX_LOGNUM 1024                   // 筋力測定の最大ログ数
+#define MAX_LOGNUM 1024 // 筋力測定の最大ログ数
 
 // フラグ等
 Mode modeCommand = Mode::TrqCtrl; // 制御対象を表すフラグ. Mode.hppに一覧で記載
 
 // 指令値
-float posCommand = 0.0; // 位置指令値[rad]
-float spdCommand = 0.0; // 速度指令値[rad/s]
-float kpCommand = 0.0;  // 位置フィードバックゲイン
-float kdCommand = 0.0;  // 速度フィードバックゲイン
-float trqCommand = 0.0; // トルク指令値[Nm]
-float trqLimit = 6.0;
-float spdLimit = 10.0;
+float posCommand = 0.0;      // 位置指令値[rad]
+float spdCommand = 0.0;      // 速度指令値[rad/s]
+float kpCommand = 0.0;       // 位置フィードバックゲイン
+float kdCommand = 0.0;       // 速度フィードバックゲイン
+float trqCommand = 0.0;      // トルク指令値[Nm]
+float trqLimit = 6.0;        // トルク上限[Nm]
+float spdLimit = 10.0;       // トルク指令時の、巻取り速度の上限[rad/s]
+float spdLimitLiftup = 10.0; // トルク指令時の、挙上速度の上限[rad/s]
 
 hw_timer_t *timer0 = NULL;
 TaskHandle_t onTimerTaskHandle = NULL;
@@ -143,16 +144,16 @@ void onTimerTask(void *pvParameters)
     xTaskNotifyWait(0, 0, NULL, portMAX_DELAY); // おまじない。xTaskNotifyFromISRから通知を受けるまで待機
 
     // モータ制御モードに入っているとき、送信値を計算し、CANを送信する
-    
     if (tmotor.getMotorControl() == 1) {
-      if (modeCommand == Mode::TrqCtrl) {             // トルク制御モードのとき
-        motor.startTrqCtrl();                         // トルク制御を開始
-        motor.setSpdLimit(spdLimit * 0.75, spdLimit); // 定トルク制御時の速度制限を設定
-        motor.setTrqRef(trqCommand);                  // トルク目標値を代入
+      if (modeCommand == Mode::TrqCtrl) {            // トルク制御モードのとき
+        motor.startTrqCtrl();                        // トルク制御を開始
+        motor.setSpdLimit(spdLimit, spdLimitLiftup); // 定トルク制御時の速度制限を設定
+        motor.setTrqRef(trqCommand);                 // トルク目標値を代入
+        motor.setTrqLimit(trqLimit);                 // トルク上限を設定
 
       } else if (modeCommand == Mode::SpdCtrl) { // 速度制御モードのとき
         motor.startSpdCtrl();                    // 速度制御を開始
-        motor.setTrqLimit(trqLimit);             // 定速制御時のトルク上限を設定
+        motor.setTrqLimit(trqLimit);             // トルク上限を設定
         motor.setSpdRef(spdCommand);             // 速度目標値を代入
 
       } else {
@@ -165,7 +166,6 @@ void onTimerTask(void *pvParameters)
     } else {
       motor.stopCtrl();
     }
-    
   }
 }
 
@@ -192,11 +192,10 @@ void loop()
   // CAN受信ログを1secおきにprint
   static unsigned long time_last_print = 0;
   if (millis() - time_last_print > 16) { // ここの数値をいじるとログ取得間隔[ms]を調整可
-                                          // if (tensionAvailable()) { // 張力計から受信したタイミングでログを飛ばす場合はこれ
+                                         // if (tensionAvailable()) { // 張力計から受信したタイミングでログを飛ばす場合はこれ
     time_last_print = millis();
 
     // モーターのログ取得
-    
     Tmotor::Log log;
     while (tmotor.logAvailable() > 0) { // ログが1つ以上たまっていたら
       log = tmotor.logRead();           // ログをひとつ取得
@@ -216,7 +215,7 @@ void loop()
     sprintf(json_data, "{\"timestamp\":%d,\"target\":%s,\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f,\"tension\":%.6f}", millis(), targetStr, log.trq, log.spd, log.pos, log.integratingAngle, tension);
     // sprintf(json_data, "{\"trq\":%f,\"spd\":%f,\"pos\":%f,\"integratingAngle\":%f,\"tension\":%.6f}", log.trq, log.spd, log.pos, log.integratingAngle, tension);
     Serial.println(json_data);
-    
+
     // ws.textAll(json_data);
   }
 
@@ -257,7 +256,6 @@ void loop()
 // parseに成功したらtrue, 失敗したらfalseを返す
 bool applyJsonMessage(String data)
 {
-  
   StaticJsonDocument<256> doc;                             // 受信した文字列をjsonにparseするためのバッファ
   DeserializationError error = deserializeJson(doc, data); // JSONにparse
   if (error) {
@@ -299,6 +297,9 @@ bool applyJsonMessage(String data)
       trqCommand = doc["trq"];
       spdCommand = 0.0;
       spdLimit = doc["spdLimit"];
+      if (doc["spdLimitLiftup"]) {
+        spdLimitLiftup = doc["spdLimitLiftup"];
+      }
 
     } else {
       modeCommand = Mode::TrqCtrl;
@@ -307,7 +308,7 @@ bool applyJsonMessage(String data)
       return false; // targetがspdでもtrqでもないのはエラー
     }
   }
-  
+
   return true;
 }
 
@@ -315,7 +316,6 @@ bool applyJsonMessage(String data)
 // 解釈に成功したらtrue, 失敗したらfalseを返す
 bool applyRegacyMessage(String data)
 {
-  
   char key = 0;
   float value = 0.0;
   sscanf(data.c_str(), "%c%f\n", &key, &value); // scan the command
@@ -330,7 +330,7 @@ bool applyRegacyMessage(String data)
       }
       return true;
     case 'm':
-      if (value > 0.5) {  // value==1のときモータ制御開始コマンドを送信
+      if (value > 0.5) {                      // value==1のときモータ制御開始コマンドを送信
         if (digitalRead(PIN_POWER) == HIGH) { // コンバータON時のみモータに起動指令
           tmotor.sendMotorControl(1);
         }
@@ -351,6 +351,6 @@ bool applyRegacyMessage(String data)
     default:
       return false;
   }
-  
+
   return false;
 }

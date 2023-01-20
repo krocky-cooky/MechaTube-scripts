@@ -3,8 +3,23 @@
 #include "Tmotor.h"
 #include <Arduino.h>
 
+constexpr float DEFAULT_DTDV = 1.0;
+
 MotorController::MotorController(Tmotor &tmotor)
-  : kp(0.0), ki(0.0), tmotor_(tmotor), object_(CtrlObject::None), trqRef_(0.0), spdLimit_(0.0), spdMax_(0.0), spdRef_(0.0), trqLimit_(0.0), spdDevIntegral_(0.0), calculatedTrq_(0.0)
+: tmotor_(tmotor),
+  object_(CtrlObject::None),
+  kp(0.0),
+  ki(0.0),
+  trqLimit_(0.0),
+  trqRef_(0.0),
+  spdMaxWindin_(0.0),
+  spdMaxLiftup_(0.0),
+  dTdV_(DEFAULT_DTDV),
+  spdLimitWindin_(0.0),
+  spdLimitLiftup_(0.0),
+  spdRef_(0.0),
+  spdDevIntegral_(0.0),
+  calculatedTrq_(0.0)
 {
 }
 
@@ -13,11 +28,14 @@ void MotorController::init(float spdKp, float spdKi)
   // モータのMとDが分かれば極配置法で設計できるが、分からないので直接指定することにした
   kp = spdKp; // 2 * M * POLE_OMEGA - D;
   ki = spdKi; // M * POLE_OMEGA * POLE_OMEGA;
-  trqRef_ = 0.0;
-  spdLimit_ = 0.0;
-  spdMax_ = 0.0;
-  spdRef_ = 0.0;
   trqLimit_ = 0.0;
+  trqRef_ = 0.0;
+  spdMaxWindin_ = 0.0;
+  spdMaxLiftup_ = 0.0;
+  dTdV_ = DEFAULT_DTDV;
+  spdLimitWindin_ = 0.0;
+  spdLimitLiftup_ = 0.0;
+  spdRef_ = 0.0;
   spdDevIntegral_ = 0.0;
   calculatedTrq_ = 0.0;
 }
@@ -40,13 +58,31 @@ void MotorController::startTrqCtrl()
 
 void MotorController::setTrqRef(float trqRef)
 {
-  trqRef_ = trqRef;
+  // トルク指令値はゼロ以上（巻取り方向）に限定
+  if (trqRef >= 0.0) {
+    trqRef_ = trqRef;
+  } else {
+    trqRef_ = 0.0;
+  }
 }
 
-void MotorController::setSpdLimit(float spdLimit, float spdMax)
+void MotorController::setSpdLimit(float spdMaxWindin, float spdMaxLiftup, float dTdV)
 {
-  spdLimit_ = spdLimit;
-  spdMax_ = spdMax;
+  // 0または負の値を渡されたら制御を無効化
+  if (spdMaxWindin > 0.0) {
+    spdMaxWindin_ = spdMaxWindin;
+  } else {
+    spdMaxWindin_ = 100.0;  // 制御が効かない大きな値
+  }
+
+  // 0または負の値を渡されたら制御を無効化
+  if (spdMaxLiftup > 0.0) {
+    spdMaxLiftup_ = spdMaxLiftup;
+  } else {
+    spdMaxLiftup_ = 100.0;  // 制御が効かない大きな値
+  }
+  
+  dTdV_ = dTdV;
 }
 
 void MotorController::startSpdCtrl()
@@ -80,15 +116,33 @@ void MotorController::update(unsigned long interval)
     tmotor_.sendCommand(0, 0, 0, 0, calculatedTrq_);
 
   } else if (object_ == CtrlObject::SpdLimitedTrq) {
-    if ((tmotor_.trqSent >= 0.0 && tmotor_.spdReceived > spdMax_) ||
-        (tmotor_.trqSent <= 0.0 && tmotor_.spdReceived < -spdMax_)) { // 正転トルク指令時にspdMaxを上回る & 逆転トルク指令時に-spdMaxを下回る
+    // if Tref < 0, reagard 0
+    if (trqRef_ < 0) {
       calculatedTrq_ = 0.0;
-    } else if ((tmotor_.trqSent >= 0.0 && tmotor_.spdReceived > spdLimit_) ||
-               (tmotor_.trqSent <= 0.0 && tmotor_.spdReceived < -spdLimit_)) { // 正転トルク指令時spdLimitを上回る & 逆転トルク指令時に-spdLimitを下回る
-      calculatedTrq_ = (spdMax_ - abs(tmotor_.spdReceived)) / (spdMax_ - spdLimit_) * trqRef_;
+
     } else {
-      calculatedTrq_ = trqRef_;
+      // avoid zero division
+      if (dTdV_ == 0.0) {
+        calculatedTrq_ = 0.0;
+
+      } else {
+        spdLimitWindin_ = spdMaxWindin_ + trqRef_ / dTdV_;
+        spdLimitLiftup_ = spdMaxLiftup_ + (trqLimit_ - trqRef_) / dTdV_;
+
+        if (tmotor_.spdReceived > spdLimitWindin_) {
+          calculatedTrq_ = 0.0;
+        } else if (tmotor_.spdReceived > spdMaxWindin_) {
+          calculatedTrq_ = (spdLimitWindin_ - tmotor_.spdReceived) * dTdV_;
+        } else if (tmotor_.spdReceived > -spdMaxLiftup_) {
+          calculatedTrq_ = trqRef_;
+        } else if (tmotor_.spdReceived > -spdLimitLiftup_) {
+          calculatedTrq_ = (- spdMaxLiftup_ - tmotor_.spdReceived) * dTdV_ + trqRef_;
+        } else {
+          calculatedTrq_ = trqLimit_;
+        }
+      }
     }
+
     tmotor_.sendCommand(0, 0, 0, 0, calculatedTrq_);
 
   } else if (object_ == CtrlObject::Spd) {
