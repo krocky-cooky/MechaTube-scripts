@@ -32,10 +32,10 @@ private:
   /// data boundary ///
   static constexpr float P_MIN = -12.5;
   static constexpr float P_MAX = 12.5;
-  static constexpr float V_MIN = -46.57;
-  static constexpr float V_MAX = 46.57;
-  static constexpr float T_MIN = -6;
-  static constexpr float T_MAX = 6;
+  static constexpr float V_MIN = -50;//-46.57;
+  static constexpr float V_MAX = 50;//46.57;
+  static constexpr float T_MIN = -54;//-65;
+  static constexpr float T_MAX = 54;//65;
   static constexpr float Kp_MIN = 0;
   static constexpr float Kp_MAX = 500;
   static constexpr float Kd_MIN = 0;

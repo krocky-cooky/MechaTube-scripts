@@ -57,6 +57,15 @@ public:
     y_[0] = 1.0 / (2.0 * tau_ + dt) * ((2.0 * tau_ - dt) * y_[1] + dt * (x_[0] + x_[1]));
     return y_[0];
   }
+
+  /**
+   * @brief 最新の出力を取得
+   * @retval y 出力
+   */
+  inline float getLatest()
+  {
+    return y_[0];
+  }
 };
 
 class FirstHPF

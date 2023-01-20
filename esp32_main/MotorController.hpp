@@ -39,9 +39,6 @@ void loop() {
 class MotorController
 {
 public:
-  const float POLE_OMEGA = 2 * PI * 10; // 極配置法の設計パラメータ
-  const float M = 0.01;  // モータの慣性モーメント
-  const float D = 0.01;  // モータの粘性定数
   float kp;
   float ki;
 
@@ -53,8 +50,8 @@ public:
 
   /**
    * @brief 変数初期化処理。setup()内と、制御を完全にリセットしたいときに実行する
-   * @param spdKp 定速制御時のPゲイン
-   * @param spdKi 定速制御時のIゲイン
+   * @param spdKp 速度制御のPゲイン
+   * @param spdKi 速度制御のIゲイン
    */
   void init(float spdKp, float spdKi);
 
@@ -127,7 +124,7 @@ private:
   float spdRef_;      // 速度指令値[rad/s]
   float trqLimit_;    // 速度制御中のトルク最大値[Nm]。速度制御中のトルクはこの値より大きくならない
   float spdDevIntegral_; // 速度のPID制御で使う、速度偏差の積分値
-  float calculatedTrq_;  // 制御器で計算されたトルク[Nm](ログ出力のためpublicにしている。要変更)
+  float calculatedTrq_;  // 制御器で計算されたトルク[Nm]
 
   void clear_(); // 制御器の内部変数や指令値を初期化する。上限値は初期化されない
 };
