@@ -37,10 +37,7 @@ const BLEUUID TENSIONMETER_CHARACTERISTIC_UUID((uint16_t)0x2A98); // Weight (定
 Mode modeCommand = Mode::TrqCtrl; // 制御対象を表すフラグ. Mode.hppに一覧で記載
 
 // 指令値
-float posCommand = 0.0;      // 位置指令値[rad]
 float spdCommand = 0.0;      // 速度指令値[rad/s]
-float kpCommand = 0.0;       // 位置フィードバックゲイン
-float kdCommand = 0.0;       // 速度フィードバックゲイン
 float trqCommand = 0.0;      // トルク指令値[Nm]
 float trqLimit = 6.0;        // トルク上限[Nm]
 float spdLimit = 10.0;       // トルク指令時の、巻取り速度の上限[rad/s]
