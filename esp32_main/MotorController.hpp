@@ -41,7 +41,7 @@ class MotorController
 public:
   float kp;
   float ki;
-  
+
   // ----------
   // Common API
   // ----------

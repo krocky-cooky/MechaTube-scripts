@@ -6,20 +6,20 @@
 constexpr float DEFAULT_DTDV = 1.0;
 
 MotorController::MotorController(Tmotor &tmotor)
-: tmotor_(tmotor),
-  object_(CtrlObject::None),
-  kp(0.0),
-  ki(0.0),
-  trqLimit_(0.0),
-  trqRef_(0.0),
-  spdMaxWindin_(0.0),
-  spdMaxLiftup_(0.0),
-  dTdV_(DEFAULT_DTDV),
-  spdLimitWindin_(0.0),
-  spdLimitLiftup_(0.0),
-  spdRef_(0.0),
-  spdDevIntegral_(0.0),
-  calculatedTrq_(0.0)
+  : tmotor_(tmotor),
+    object_(CtrlObject::None),
+    kp(0.0),
+    ki(0.0),
+    trqLimit_(0.0),
+    trqRef_(0.0),
+    spdMaxWindin_(0.0),
+    spdMaxLiftup_(0.0),
+    dTdV_(DEFAULT_DTDV),
+    spdLimitWindin_(0.0),
+    spdLimitLiftup_(0.0),
+    spdRef_(0.0),
+    spdDevIntegral_(0.0),
+    calculatedTrq_(0.0)
 {
 }
 
@@ -72,16 +72,16 @@ void MotorController::setSpdLimit(float spdMaxWindin, float spdMaxLiftup, float 
   if (spdMaxWindin > 0.0) {
     spdMaxWindin_ = spdMaxWindin;
   } else {
-    spdMaxWindin_ = 100.0;  // 制御が効かない大きな値
+    spdMaxWindin_ = 100.0; // 制御が効かない大きな値
   }
 
   // 0または負の値を渡されたら制御を無効化
   if (spdMaxLiftup > 0.0) {
     spdMaxLiftup_ = spdMaxLiftup;
   } else {
-    spdMaxLiftup_ = 100.0;  // 制御が効かない大きな値
+    spdMaxLiftup_ = 100.0; // 制御が効かない大きな値
   }
-  
+
   dTdV_ = dTdV;
 }
 
@@ -136,7 +136,7 @@ void MotorController::update(unsigned long interval)
         } else if (tmotor_.spdReceived > -spdMaxLiftup_) {
           calculatedTrq_ = trqRef_;
         } else if (tmotor_.spdReceived > -spdLimitLiftup_) {
-          calculatedTrq_ = (- spdMaxLiftup_ - tmotor_.spdReceived) * dTdV_ + trqRef_;
+          calculatedTrq_ = (-spdMaxLiftup_ - tmotor_.spdReceived) * dTdV_ + trqRef_;
         } else {
           calculatedTrq_ = trqLimit_;
         }
@@ -158,7 +158,7 @@ void MotorController::update(unsigned long interval)
     } else if (calculatedTrq_ < -trqLimit_) {
       calculatedTrq_ = -trqLimit_;
     }
-     // トルク送信
+    // トルク送信
     tmotor_.sendCommand(0, 0, 0, 0, calculatedTrq_);
 
   } else {
