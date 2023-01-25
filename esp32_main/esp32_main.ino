@@ -84,7 +84,7 @@ void setup()
   }
 
   tmotor.init();
-  motor.init(1.5, 3.0); // motor.init(速度制御のPゲイン、速度制御のIゲイン);
+  motor.init(0.5, 3.0); // motor.init(速度制御のPゲイン、速度制御のIゲイン);
 
   // 張力計とのBLE通信のsetup
   Serial.println("[setup] Initalizing BLE...");
